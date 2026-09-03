@@ -1,0 +1,22 @@
+{
+  "id": "silly.tavern.simulator",
+  "name": "TA的SillyTavern",
+  "version": "2.0.0",
+  "sdkVersion": "1.0",
+  "author": "小坊",
+  "description": "TA的SillyTavern：全功能酒馆卡片工作台！支持逐项AI生成/手动精修W++卡与User Persona马甲，完整历史卡库归档随时继续玩，还原真人对戏与双向窥探！",
+  "icon": "icon.png",
+  "entry": "index.html",
+  "permissions": [
+    "app.data.read",
+    "app.data.write",
+    "characters.read",
+    "user.profile.read",
+    "ai.generate",
+    "chat.sendCard",
+    "chat.requestReply",
+    "memory.write",
+    "ui.toast"
+  ],
+  "primaryTags": []
+}

@@ -1,0 +1,2850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TA的SillyTavern</title>
+<style>
+  :root {
+    --st-bg: #111318;
+    --st-card: rgba(22, 25, 34, 0.95);
+    --st-border: rgba(255, 255, 255, 0.1);
+    --st-primary: #ec4899;
+    --st-accent: #8b5cf6;
+    --st-char-bubble: #1c202a;
+    --st-user-bubble: #2d1e3d;
+    --text-main: #f3f4f6;
+    --text-sub: #9ca3af;
+    --safe-top: var(--ai-phone-app-bar-top, 44px);
+    --safe-bottom: var(--ai-phone-app-safe-bottom, 20px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--st-bg);
+    color: var(--text-main);
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  #st-root {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background: radial-gradient(circle at 50% 10%, #1f1830 0%, #0d0f14 80%);
+  }
+
+  /* 顶栏 */
+  .st-topbar {
+    position: fixed;
+    top: var(--safe-top);
+    left: 12px;
+    right: var(--ai-phone-app-bar-clear-right, 96px);
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 50;
+  }
+  .owner-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(30, 34, 48, 0.85);
+    border: 1px solid var(--st-border);
+    backdrop-filter: blur(10px);
+    padding: 4px 10px 4px 6px;
+    border-radius: 20px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .owner-avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    object-fit: cover; background: #475569;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; overflow: hidden;
+  }
+  .owner-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+  .mode-switch-group {
+    display: flex;
+    background: rgba(15, 17, 23, 0.85);
+    border: 1px solid var(--st-border);
+    border-radius: 20px;
+    padding: 2px;
+  }
+  .mode-item {
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-sub);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mode-item.active {
+    background: linear-gradient(135deg, var(--st-primary), var(--st-accent));
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.4);
+  }
+
+  /* 视图容器 */
+  .st-view-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding-top: calc(var(--safe-top) + 44px);
+    padding-bottom: calc(var(--safe-bottom) + 12px);
+    overflow-y: auto;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* 微信风格角色卡列表 (Card List View) */
+  .card-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 0 4px;
+  }
+  .card-list-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-new-card-top {
+    background: linear-gradient(135deg, var(--st-primary), var(--st-accent));
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.35);
+  }
+
+  .wx-card-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(22, 25, 34, 0.85);
+    border: 1px solid var(--st-border);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .wx-card-item:active {
+    background: rgba(35, 40, 54, 0.95);
+    transform: scale(0.98);
+  }
+  .wx-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #ec4899, #8b5cf6);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(236, 72, 153, 0.3);
+  }
+  .wx-info {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .wx-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .wx-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wx-badge {
+    font-size: 10px;
+    color: #f472b6;
+    background: rgba(236, 72, 153, 0.15);
+    border: 1px solid rgba(236, 72, 153, 0.3);
+    padding: 1px 6px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .wx-user-tag {
+    font-size: 10.5px;
+    color: #a78bfa;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wx-desc {
+    font-size: 11.5px;
+    color: var(--text-sub);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .wx-del-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 14px;
+    padding: 6px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+  .wx-del-btn:active {
+    opacity: 1;
+    color: #f87171;
+  }
+
+  /* 对话流视图容器 */
+  .st-chat-view-container {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    padding-top: calc(var(--safe-top) + 44px);
+    padding-bottom: calc(var(--safe-bottom) + 66px);
+    overflow-y: auto;
+    gap: 12px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* 顶部返回条 */
+  .chat-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(22, 25, 34, 0.85);
+    border: 1px solid var(--st-border);
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+  }
+  .btn-back-list {
+    background: transparent;
+    border: none;
+    color: #f472b6;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+
+  /* 空白引导页 (Welcome Screen) */
+  .empty-welcome-card {
+    background: var(--st-card);
+    border: 1px solid rgba(236, 72, 153, 0.25);
+    border-radius: 18px;
+    padding: 24px 18px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .empty-icon { font-size: 42px; margin-bottom: 4px; }
+  .empty-title { font-size: 16px; font-weight: 700; color: #fff; }
+  .empty-desc { font-size: 12px; color: var(--text-sub); line-height: 1.5; max-width: 240px; }
+  .btn-start-create {
+    background: linear-gradient(135deg, var(--st-primary), var(--st-accent));
+    color: #fff; border: none; padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+    transition: transform 0.15s;
+  }
+  .btn-start-create:active { transform: scale(0.95); }
+
+  /* 酒馆当前角色卡 (SillyTavern Character Card Banner) */
+  .card-banner {
+    background: var(--st-card);
+    border: 1px solid rgba(236, 72, 153, 0.25);
+    border-radius: 14px;
+    padding: 10px 12px;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    cursor: pointer;
+  }
+  .card-banner-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .st-badge {
+    font-size: 10px;
+    background: rgba(236, 72, 153, 0.15);
+    color: #f472b6;
+    border: 1px solid rgba(236, 72, 153, 0.35);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-weight: 700;
+  }
+  .card-banner-body {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .card-avatar-box {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #ec4899, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .card-info { flex: 1; overflow: hidden; }
+  .card-name { font-size: 13px; font-weight: 700; color: #fff; }
+  .card-persona-preview {
+    font-size: 11px; color: #cbd5e1; margin-top: 2px; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card-tags-row {
+    display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap;
+  }
+  .card-tag-pill {
+    font-size: 9.5px; color: #a5b4fc; background: rgba(139, 92, 246, 0.15);
+    padding: 1px 5px; border-radius: 4px;
+  }
+
+  /* 酒馆对话流容器 */
+  .st-chat-stream {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 4px 0 20px;
+  }
+
+  /* 消息气泡 */
+  .st-msg-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: fadeIn 0.2s ease;
+  }
+  
+  /* 酒馆角色卡发言 (AI) */
+  .char-bubble {
+    background: var(--st-char-bubble);
+    border: 1px solid var(--st-border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #f1f5f9;
+    border-left: 3px solid var(--st-primary);
+  }
+  .char-bubble-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #f472b6;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  /* 小手机角色自己在酒馆里的发言 (User Persona) */
+  .user-bubble {
+    background: var(--st-user-bubble);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #f8fafc;
+    border-right: 3px solid var(--st-accent);
+  }
+  .user-bubble-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #c084fc;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  /* 经典 SillyTavern 动作斜体高亮 *actions* */
+  .action-text {
+    font-style: italic;
+    color: #a78bfa;
+  }
+
+  /* 现实中角色屏幕外的真实自言自语/内心戏 */
+  .owner-real-os {
+    align-self: flex-end;
+    max-width: 90%;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px dashed rgba(245, 158, 11, 0.4);
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #fde68a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* 正在输入动效展示 */
+  .typing-indicator-box {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    animation: pulse 1.2s infinite;
+  }
+  .typing-user { background: rgba(139, 92, 246, 0.15); color: #c084fc; align-self: flex-end; }
+  .typing-ai { background: rgba(236, 72, 153, 0.15); color: #f472b6; align-self: flex-start; }
+
+  /* 底栏控制区 */
+  .st-bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(17, 19, 24, 0.95);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--st-border);
+    padding: 8px 12px calc(var(--safe-bottom) + 6px);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 60;
+  }
+
+  /* 吃瓜模式按钮组 */
+  .spectator-row { display: flex; gap: 8px; }
+  .st-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 0;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--st-primary), var(--st-accent)); color: #fff; }
+  .btn-secondary { background: rgba(255,255,255,0.08); color: #fff; }
+  .btn-secondary.active { background: #f59e0b; color: #000; font-weight: 700; }
+  .btn-share { background: rgba(236, 72, 153, 0.15); border: 1px solid rgba(236, 72, 153, 0.35); color: #f472b6; flex: 0.85; }
+
+  /* 接管酒馆卡输入栏 */
+  .takeover-input-row { display: flex; gap: 8px; align-items: center; }
+  .st-input {
+    flex: 1;
+    background: #0d0f14;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 9px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    outline: none;
+  }
+  .st-input:focus { border-color: var(--st-primary); }
+  .btn-send-takeover {
+    background: linear-gradient(135deg, var(--st-primary), #d946ef);
+    color: #fff;
+    border: none;
+    padding: 9px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* 弹窗通用 */
+  .modal-mask {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+
+  /* 手机端 Discord 原生多页面切换架构 */
+  .discord-full-modal {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: #1e1f22; z-index: 150; display: none;
+    flex-direction: column; overflow: hidden; color: #dbdee1;
+  }
+
+  /* 页面1：手机版 Discord 频道主页 */
+  .dc-mobile-home {
+    width: 100%; height: 100%; display: flex; flex-direction: column;
+    background: #2b2d31;
+  }
+  .dc-home-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: calc(var(--safe-top) + 6px) 14px 12px; background: #1e1f22;
+    border-bottom: 1px solid #111214; box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .dc-home-server-badge {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dc-server-logo {
+    width: 32px; height: 32px; background: #5865F2; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+    box-shadow: 0 2px 8px rgba(88, 101, 242, 0.4);
+  }
+  .dc-server-meta-name {
+    font-size: 14px; font-weight: 700; color: #fff;
+  }
+  .dc-server-meta-sub {
+    font-size: 10px; color: #949ba4;
+  }
+  .dc-home-close-btn {
+    background: rgba(255,255,255,0.08); border: none; color: #dbdee1;
+    width: 30px; height: 30px; border-radius: 50%; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .dc-home-close-btn:active { background: rgba(255,255,255,0.2); }
+
+  .dc-home-scroll {
+    flex: 1; overflow-y: auto; padding: 12px 14px calc(var(--safe-bottom) + 20px);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  /* 频道卡片项（移动端大号点击条） */
+  .dc-mobile-cat-title {
+    font-size: 11px; font-weight: 700; color: #949ba4; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 4px; padding-left: 2px;
+  }
+  .dc-channel-card-btn {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #313338; border: 1px solid #383a40; border-radius: 12px;
+    padding: 12px 14px; cursor: pointer; transition: all 0.15s ease;
+    margin-bottom: 8px;
+  }
+  .dc-channel-card-btn:active {
+    background: #383a40; transform: scale(0.98);
+  }
+  .dc-chan-btn-left {
+    display: flex; align-items: center; gap: 10px; overflow: hidden;
+  }
+  .dc-chan-icon-box {
+    width: 36px; height: 36px; border-radius: 10px; background: rgba(88, 101, 242, 0.15);
+    border: 1px solid rgba(88, 101, 242, 0.3); color: #c9cdfb;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+    flex-shrink: 0;
+  }
+  .dc-chan-btn-title {
+    font-size: 13.5px; font-weight: 700; color: #f2f3f5;
+  }
+  .dc-chan-btn-desc {
+    font-size: 11px; color: #949ba4; margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;
+  }
+  .dc-chan-arrow {
+    color: #80848e; font-size: 14px; font-weight: bold; flex-shrink: 0;
+  }
+
+  /* 页面2：手机版 Discord 频道消息流页 */
+  .dc-mobile-channel-view {
+    width: 100%; height: 100%; display: none; flex-direction: column;
+    background: #313338;
+  }
+  .dc-chan-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: calc(var(--safe-top) + 6px) 12px 10px; background: #2b2d31;
+    border-bottom: 1px solid #232428; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    flex-shrink: 0;
+  }
+  .dc-back-btn {
+    display: flex; align-items: center; gap: 4px; background: transparent;
+    border: none; color: #5865F2; font-size: 13px; font-weight: 700;
+    cursor: pointer; padding: 4px 6px; border-radius: 6px;
+  }
+  .dc-back-btn:active { background: rgba(88, 101, 242, 0.15); }
+
+  .dc-chan-nav-title {
+    font-size: 14px; font-weight: 700; color: #f2f3f5;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  .dc-chan-actions {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .dc-btn-refresh {
+    background: #5865F2; color: #fff; border: none; padding: 5px 10px;
+    border-radius: 16px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(88, 101, 242, 0.4);
+  }
+  .dc-btn-refresh:active { transform: scale(0.95); }
+
+  /* 搜索框条 */
+  .dc-search-bar-wrap {
+    padding: 8px 12px; background: #2b2d31; border-bottom: 1px solid #232428;
+    display: flex; gap: 6px;
+  }
+  .dc-search-input {
+    flex: 1; background: #1e1f22; border: 1px solid #383a40; color: #dbdee1;
+    padding: 7px 12px; border-radius: 8px; font-size: 12px; outline: none;
+  }
+  .dc-search-btn {
+    background: rgba(255,255,255,0.08); border: 1px solid #383a40; color: #dbdee1;
+    padding: 0 12px; border-radius: 8px; font-size: 12px; cursor: pointer;
+  }
+
+  /* 消息卡片流 */
+  .dc-feed-scroll {
+    flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column;
+    gap: 14px; padding-bottom: calc(var(--safe-bottom) + 30px);
+  }
+
+  /* 单个 Discord 消息卡片 */
+  .dc-msg-item {
+    display: flex; gap: 10px; animation: fadeIn 0.2s ease;
+  }
+  .dc-author-avatar {
+    width: 38px; height: 38px; border-radius: 50%; background: #5865F2;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+    flex-shrink: 0; color: #fff; font-weight: bold; overflow: hidden;
+  }
+  .dc-msg-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 4px; }
+  .dc-msg-header { display: flex; align-items: baseline; gap: 6px; }
+  .dc-author-name { font-size: 13px; font-weight: 700; color: #f2f3f5; }
+  .dc-bot-tag {
+    background: #5865F2; color: #fff; font-size: 9px; font-weight: 800;
+    padding: 1px 4px; border-radius: 4px; text-transform: uppercase;
+  }
+  .dc-timestamp { font-size: 10px; color: #949ba4; }
+  
+  /* 真实移动版 Discord Embed 卡片 */
+  .dc-embed {
+    background: #2b2d31; border-radius: 8px; border-left: 4px solid #5865F2;
+    padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); margin-top: 2px;
+  }
+  .dc-embed-title {
+    font-size: 15px; font-weight: 800; color: #00a8fc; display: flex;
+    align-items: center; justify-content: space-between;
+  }
+  .dc-embed-desc {
+    font-size: 12px; color: #dbdee1; line-height: 1.5;
+  }
+  .dc-embed-firstmes {
+    background: #1e1f22; border-left: 3px solid #ec4899; padding: 8px 10px;
+    border-radius: 6px; font-size: 11.5px; color: #f2f3f5; line-height: 1.5;
+  }
+  .dc-embed-fields {
+    display: flex; flex-direction: column; gap: 6px;
+    background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 6px;
+  }
+  .dc-field-row {
+    font-size: 11px; line-height: 1.4; color: #cbd5e1;
+  }
+  .dc-field-name { font-weight: 700; color: #c9cdfb; }
+  
+  .dc-embed-actions {
+    display: flex; gap: 8px; margin-top: 4px; align-items: center; justify-content: space-between;
+  }
+  .dc-btn-import {
+    background: linear-gradient(135deg, #248046, #1b6336); color: #fff; border: none;
+    padding: 8px 16px; border-radius: 8px; font-size: 12.5px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; gap: 4px;
+    box-shadow: 0 2px 8px rgba(36, 128, 70, 0.4);
+  }
+  .dc-btn-import:active { transform: scale(0.96); }
+  .modal-card {
+    background: #181b24; border: 1px solid var(--st-border);
+    border-radius: 18px; width: 100%; max-width: 320px;
+    padding: 18px; display: flex; flex-direction: column; gap: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  }
+  .modal-title { font-size: 16px; font-weight: 700; color: #fff; text-align: center; }
+  .modal-msg { font-size: 13px; color: var(--text-sub); line-height: 1.5; text-align: left; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 6px; }
+  .m-btn { flex: 1; padding: 9px 0; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+  .m-cancel { background: rgba(255,255,255,0.1); color: #fff; }
+  .m-primary { background: var(--st-primary); color: #fff; }
+
+  /* 真实 SillyTavern 编辑器可交互表单 */
+  .st-editor-input {
+    width: 100%; background: #0d0f14; border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; padding: 7px 10px; font-size: 12px; color: #fff;
+    margin-top: 3px; outline: none; font-family: inherit;
+  }
+  .st-editor-input:focus { border-color: var(--st-primary); }
+  .field-header-row { display: flex; justify-content: space-between; align-items: center; }
+  .field-label { font-size: 11px; font-weight: 700; color: #a78bfa; }
+  .field-label-user { font-size: 11px; font-weight: 700; color: #f472b6; }
+  .field-ai-btn {
+    font-size: 10px; color: #f472b6; background: rgba(236,72,153,0.15);
+    border: 1px solid rgba(236,72,153,0.35); padding: 2px 6px; border-radius: 6px;
+    cursor: pointer;
+  }
+  .field-ai-btn:active { transform: scale(0.92); }
+  .st-persona-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.35);
+    color: #c084fc; font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    margin-bottom: 8px;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+</style>
+</head>
+<body>
+<!--CONTINUE--><div id="st-root">
+  <!-- 顶栏 -->
+  <div class="st-topbar">
+    <div class="owner-pill" onclick="openOwnerPicker()">
+      <div class="owner-avatar" id="top-owner-avatar">👤</div>
+      <span id="top-owner-name">加载中...</span>
+      <span style="font-size: 9px; opacity: 0.7;">▼</span>
+    </div>
+    <div class="mode-switch-group">
+      <div class="mode-item active" id="tab-spectator" onclick="switchMode('spectator')">👀 吃瓜窥屏</div>
+      <div class="mode-item" id="tab-takeover" onclick="switchMode('takeover')">🎭 假扮酒馆卡</div>
+    </div>
+  </div>
+
+  <!-- 微信风格：角色卡对话列表主页 (Cards List View) -->
+  <div class="st-view-container" id="cards-list-view">
+    <div class="card-list-header">
+      <div class="card-list-title">
+        <span>🎴 TA的角色卡列表</span>
+      </div>
+      <div style="display: flex; gap: 6px; align-items: center;">
+        <button class="btn-new-card-top" style="background: #5865F2; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 2px 8px rgba(88, 101, 242, 0.4);" onclick="openDiscordHubModal()">
+          <span>👾 Discord卡库</span>
+        </button>
+        <button class="btn-new-card-top" style="background: rgba(255,255,255,0.1); border: 1px solid var(--st-border);" onclick="openThemeModal()">🎨 主题/CSS</button>
+        <button class="btn-new-card-top" onclick="openLiveEditorModal()">+ 捏新卡</button>
+      </div>
+    </div>
+
+    <!-- 空白引导卡（未建卡时展示） -->
+    <div class="empty-welcome-card" id="empty-welcome-el" style="display: none;">
+      <div class="empty-icon">🎴</div>
+      <div class="empty-title"><span id="empty-owner-name">TA</span> 还没在酒馆里建卡</div>
+      <div class="empty-desc">点击下方按钮，启动 SillyTavern 偷看 TA 现场自捏高阶卡并捏专属 User Persona 开启秘密剧情！</div>
+      <button class="btn-start-create" onclick="openLiveEditorModal()">✨ 启动酒馆 · 现场自捏高阶卡</button>
+    </div>
+
+    <!-- 角色卡条目列表容器 -->
+    <div id="wx-cards-container">
+      <!-- 动态生成微信风格横向条目 -->
+    </div>
+  </div>
+
+  <!-- 对戏对话区视图 (Chat Session View) -->
+  <div class="st-chat-view-container" id="chat-session-view">
+    <!-- 顶部返回导航 -->
+    <div class="chat-nav-bar">
+      <button class="btn-back-list" onclick="backToCardsList()">
+        <span>◀</span> <span>返回卡片列表</span>
+      </button>
+      <span style="font-size: 11px; color: #a78bfa; font-weight: 600;" id="chat-nav-user-tag">马甲对戏中</span>
+    </div>
+
+    <!-- 当前酒馆 Character Card -->
+    <div class="card-banner" id="card-banner-el" onclick="openCardDrawer()">
+      <div class="card-banner-top">
+        <span class="st-badge">SillyTavern Card</span>
+        <span style="font-size:11px; color:#f472b6; font-weight:600;">卡片详情 / 编辑 ⚙️</span>
+      </div>
+      <div class="card-banner-body">
+        <div class="card-avatar-box" id="cur-card-icon">👑</div>
+        <div class="card-info">
+          <div class="card-name">
+            <span id="cur-card-name">角色卡</span>
+          </div>
+          <div class="card-persona-preview" id="cur-card-preview">
+            描述
+          </div>
+        </div>
+      </div>
+      <div class="card-tags-row" id="cur-card-tags">
+        <!-- 标签 -->
+      </div>
+    </div>
+
+    <!-- 对话流 -->
+    <div class="st-chat-stream" id="st-stream-container">
+      <!-- 动态生成 -->
+    </div>
+  </div>
+
+  <!-- 底栏 -->
+  <div class="st-bottom-bar" id="st-bottom-bar" style="display: none;">
+    <!-- 吃瓜模式：去掉自动挂机按钮，保留稳定手动推进与处刑抓包 -->
+    <div class="spectator-row" id="dock-spectator">
+      <button class="st-btn btn-primary" id="btn-next-step" onclick="triggerNextTurn()" style="flex: 1.4;">
+        <span>💬 推进下一句</span>
+      </button>
+      <button class="st-btn btn-share" onclick="shareToRealChat()">
+        <span>📸 处刑抓包</span>
+      </button>
+    </div>
+
+    <!-- 接管酒馆卡模式 -->
+    <div class="takeover-input-row" id="dock-takeover" style="display: none;">
+      <input type="text" class="st-input" id="takeover-input" placeholder="以酒馆卡身份回复TA（支持 *动作描写*）..." onkeydown="if(event.key==='Enter') sendTakeoverMessage()">
+      <button class="btn-send-takeover" onclick="sendTakeoverMessage()">回复TA</button>
+    </div>
+  </div>
+
+  <!-- 真实可编辑、逐项生成、一键全捏的 SillyTavern 高级卡编辑器窗口 -->
+  <div id="live-editor-modal" class="modal-mask">
+    <div class="modal-card" style="max-width: 330px; max-height: 85vh; overflow-y: auto;">
+      <div class="modal-title" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <span>🎴 SillyTavern 角色卡编辑器</span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-sub); text-align: center;" id="editor-sub-status">
+        支持 TA 自动生成、你手动修改或逐项让 AI 脑补
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+        <!-- XP与剧本倾向选择器 -->
+        <div>
+          <div class="field-header-row">
+            <span class="field-label" style="color: #f472b6;">🎯 捏卡XP / 脑洞倾向</span>
+            <span style="font-size: 10px; color: var(--text-sub);">选择后生成对应风格</span>
+          </div>
+          <select class="st-editor-input" id="field-xp-style" style="cursor: pointer;" onchange="onXpStyleChange()">
+            <option value="xp_wild">😈 私密隐秘XP大爆发（反差萌/病娇占有/下克上/高岭之花沦陷）</option>
+            <option value="rival_clash">💥 宿敌与相爱相杀（互相试探/伪装卧底/针锋相对谁先动摇）</option>
+            <option value="fantasy_dark">⚔️ 奇幻异世界与禁断（恶魔执政官/疯批暴君/神明堕落）</option>
+            <option value="modern_tension">🏙️ 都市隐秘推拉（禁欲上司/年下反差小狼狗/伪骨科/合租秘密）</option>
+            <option value="familiar_proxy">👥 熟人/身边人代餐（偷偷以现实关系为原型的推拉妄想）</option>
+            <option value="free_random">🎲 彻底放飞自我（不限题材，让TA自由放飞最狂野脑洞）</option>
+          </select>
+        </div>
+
+        <!-- 一、AI 角色卡高级定义 -->
+        <div>
+          <div class="field-header-row">
+            <span class="field-label">Character Name & Tagline</span>
+            <button class="field-ai-btn" onclick="generateSingleField('name')">✨ AI单项生成</button>
+          </div>
+          <input type="text" class="st-editor-input" id="field-char-name" placeholder="如：傲娇同桌 / 帝国执政官 / 纯情病娇魅魔" oninput="updateAvatarPreview()">
+        </div>
+
+        <!-- 角色卡自定义头像 -->
+        <div>
+          <div class="field-header-row">
+            <span class="field-label">🖼️ 角色卡头像 (默认首字 / 支持自定义图片)</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+            <div id="editor-avatar-preview" style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #ec4899, #8b5cf6); color: #fff; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border: 1px solid rgba(255,255,255,0.2);">
+              卡
+            </div>
+            <input type="text" class="st-editor-input" id="field-char-avatar" placeholder="图片 URL 或点右侧上传" style="margin-top:0;" oninput="updateAvatarPreview()">
+            <label style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 7px 10px; border-radius: 8px; font-size: 11px; cursor: pointer; white-space: nowrap;">
+              上传
+              <input type="file" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)">
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <div class="field-header-row">
+            <span class="field-label">Description (W++ 设定/外貌背景)</span>
+            <button class="field-ai-btn" onclick="generateSingleField('desc')">✨ AI单项生成</button>
+          </div>
+          <textarea rows="3" class="st-editor-input" id="field-char-desc" placeholder="[Traits=..., Background=...]"></textarea>
+        </div>
+
+        <div>
+          <div class="field-header-row">
+            <span class="field-label">Personality & Speech Style (性格推拉)</span>
+            <button class="field-ai-btn" onclick="generateSingleField('persona')">✨ AI单项生成</button>
+          </div>
+          <textarea rows="2" class="st-editor-input" id="field-char-persona" placeholder="深度性格、隐藏弱点与推拉口癖"></textarea>
+        </div>
+
+        <div>
+          <div class="field-header-row">
+            <span class="field-label">Scenario (开场世界观与情景张力)</span>
+            <button class="field-ai-btn" onclick="generateSingleField('scenario')">✨ AI单项生成</button>
+          </div>
+          <textarea rows="2" class="st-editor-input" id="field-char-scenario" placeholder="如：放学后的空教室，夕阳斜照..."></textarea>
+        </div>
+
+        <div>
+          <div class="field-header-row">
+            <span class="field-label">First Message (第一句高质感开场白)</span>
+            <button class="field-ai-btn" onclick="generateSingleField('firstmes')">✨ AI单项生成</button>
+          </div>
+          <textarea rows="3" class="st-editor-input" id="field-char-firstmes" placeholder="*动作神态细节* “第一句台词...”"></textarea>
+        </div>
+
+        <!-- 二、TA 为自己捏的 User Persona（马甲卡） -->
+        <div style="border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 8px; margin-top: 4px;">
+          <div class="field-header-row">
+            <span class="field-label-user">👤 TA 扮演的 User Persona (玩家马甲)</span>
+            <button class="field-ai-btn" onclick="generateSingleField('user')">✨ AI单项生成</button>
+          </div>
+          <input type="text" class="st-editor-input" id="field-user-name" placeholder="马甲名字：如 落魄刺客 / 傲娇学弟" style="margin-bottom: 4px;">
+          <textarea rows="2" class="st-editor-input" id="field-user-desc" placeholder="马甲动机设定：如 带着秘密潜伏在TA身边..."></textarea>
+        </div>
+      </div>
+
+      <div style="background: rgba(245, 158, 11, 0.12); border: 1px dashed rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 8px; font-size: 11px; color: #fde68a; margin-top: 6px;">
+        💭 TA构思时的内心戏：<span id="editor-inner-os">嘿嘿，这次要捏一个戳我的高级剧本！</span>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 10px;">
+        <button class="m-btn m-cancel" onclick="closeModal('live-editor-modal')">取消</button>
+        <button class="m-btn" style="background: #a855f7; color:#fff;" id="btn-auto-all" onclick="autoGenerateAllFields()">⚡ 让TA一键全捏</button>
+        <button class="m-btn m-primary" onclick="saveEditedCardAndStart()">💾 保存进卡库并开聊</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 酒馆角色卡库与抽屉 -->
+  <div id="drawer-modal" class="modal-mask">
+    <div class="modal-card" style="max-width: 330px; max-height: 85vh; display: flex; flex-direction: column;">
+      <div class="modal-title">🎴 TA的酒馆角色卡库</div>
+      
+      <!-- 当前卡片详情（包含 User Persona 展示） -->
+      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--st-border); border-radius: 12px; padding: 10px; margin-top: 4px; overflow-y: auto; max-height: 190px;" id="drawer-card-details">
+        <!-- 详情 -->
+      </div>
+
+      <!-- TA捏过的其他卡片列表（换卡） -->
+      <div style="margin-top: 8px;">
+        <div style="font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 6px; display: flex; justify-content: space-between;">
+          <span>📚 TA私藏的卡片历史 (点击随时继续玩)</span>
+          <span style="font-size: 10px; color: var(--st-primary); cursor: pointer;" onclick="openLiveEditorModal()">+ 捏新卡</span>
+        </div>
+        <div id="drawer-cards-list" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+          <!-- 动态卡片列表 -->
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 10px;">
+        <button class="m-btn m-cancel" onclick="closeModal('drawer-modal')">关闭</button>
+        <button class="m-btn" style="background: #3b82f6; color:#fff;" onclick="editCurrentActiveCard()">✏️ 编辑此卡</button>
+        <button class="m-btn m-primary" onclick="openLiveEditorModal()">✨ 偷让TA捏新卡</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手机角色切换弹窗 -->
+  <div id="owner-modal" class="modal-mask">
+    <div class="modal-card" style="max-width: 320px;">
+      <div class="modal-title">📱 选择谁在玩 SillyTavern</div>
+      <div id="owner-select-list" style="max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin: 10px 0;">
+        <!-- 动态生成 -->
+      </div>
+      <div class="modal-actions">
+        <button class="m-btn m-cancel" onclick="closeModal('owner-modal')">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用确认弹窗 -->
+  <div id="st-dialog-modal" class="modal-mask">
+    <div class="modal-card">
+      <div class="modal-title" id="st-dialog-title">提示</div>
+      <div class="modal-msg" id="st-dialog-msg">内容</div>
+      <div class="modal-actions">
+        <button class="m-btn m-cancel" onclick="closeModal('st-dialog-modal')">取消</button>
+        <button class="m-btn m-primary" id="st-dialog-confirm">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Discord 角色卡完整详情弹窗（点卡片查看专门描述，再决定是否导入） -->
+  <div id="dc-card-detail-modal" class="modal-mask" style="z-index: 180;">
+    <div class="modal-card" style="max-width: 330px; max-height: 85vh; overflow-y: auto; background: #2b2d31; border: 1px solid #4e5058; text-align: left; padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div id="dc-detail-avatar" style="width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #5865F2, #8b5cf6); color: #fff; font-size: 20px; font-weight: bold; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            🎴
+          </div>
+          <div>
+            <div id="dc-detail-name" style="font-size: 15px; font-weight: 800; color: #fff;">角色名</div>
+            <div id="dc-detail-author" style="font-size: 10.5px; color: #949ba4;">作者: CardDev#1001</div>
+          </div>
+        </div>
+        <button style="background: transparent; border: none; color: #949ba4; font-size: 18px; cursor: pointer; padding: 2px;" onclick="closeModal('dc-card-detail-modal')">×</button>
+      </div>
+
+      <div id="dc-detail-tags" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;">
+        <!-- 标签 -->
+      </div>
+
+      <!-- 专门设定描述区 -->
+      <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+        <div>
+          <div style="font-size: 11px; font-weight: 700; color: #a78bfa;">📜 W++ 结构化深度设定 (Description)：</div>
+          <div id="dc-detail-desc" style="font-size: 11.5px; color: #cbd5e1; background: #1e1f22; padding: 8px; border-radius: 6px; margin-top: 3px; line-height: 1.45; word-break: break-word;"></div>
+        </div>
+
+        <div>
+          <div style="font-size: 11px; font-weight: 700; color: #f472b6;">🎭 性格与推拉机制 (Personality)：</div>
+          <div id="dc-detail-personality" style="font-size: 11.5px; color: #cbd5e1; background: #1e1f22; padding: 8px; border-radius: 6px; margin-top: 3px; line-height: 1.45;"></div>
+        </div>
+
+        <div>
+          <div style="font-size: 11px; font-weight: 700; color: #38bdf8;">⚔️ 剧本开场场景 (Scenario)：</div>
+          <div id="dc-detail-scenario" style="font-size: 11.5px; color: #cbd5e1; background: #1e1f22; padding: 8px; border-radius: 6px; margin-top: 3px; line-height: 1.45;"></div>
+        </div>
+
+        <div>
+          <div style="font-size: 11px; font-weight: 700; color: #fbbf24;">💬 First Message 开场白预览：</div>
+          <div id="dc-detail-firstmes" style="font-size: 11.5px; color: #f2f3f5; background: #1e1f22; border-left: 3px solid #ec4899; padding: 8px; border-radius: 6px; margin-top: 3px; line-height: 1.45;"></div>
+        </div>
+
+        <div style="background: rgba(88, 101, 242, 0.12); border: 1px dashed rgba(88, 101, 242, 0.4); padding: 8px; border-radius: 6px;">
+          <div style="font-size: 10.5px; color: #c9cdfb; font-weight: 700;">👤 TA在此剧本中的专属马甲 (User Persona)：</div>
+          <div id="dc-detail-user" style="font-size: 11px; color: #e2e8f0; margin-top: 2px;"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 14px;">
+        <button class="m-btn m-cancel" onclick="closeModal('dc-card-detail-modal')">再逛逛</button>
+        <button class="m-btn" style="background: linear-gradient(135deg, #248046, #1b6336); color: #fff; font-weight: 700;" id="btn-dc-detail-import">📥 立即导入开聊</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 仿移动端 Discord 原生多页面切换架构 -->
+  <div id="discord-hub-modal" class="discord-full-modal">
+    <!-- 视图一：手机端 Discord 频道/专区首页 -->
+    <div class="dc-mobile-home" id="dc-page-home">
+      <div class="dc-home-topbar">
+        <div class="dc-home-server-badge">
+          <div class="dc-server-logo">👾</div>
+          <div>
+            <div class="dc-server-meta-name">SillyTavern Card Hub</div>
+            <div class="dc-server-meta-sub" id="dc-current-user-tag">Discord 社区精选</div>
+          </div>
+        </div>
+        <button class="dc-home-close-btn" onclick="closeDiscordHub()">✕</button>
+      </div>
+
+      <div class="dc-home-scroll">
+        <!-- 频道组 1: 个性化精选 -->
+        <div>
+          <div class="dc-mobile-cat-title">✨ 探索专区 (点击进入频道)</div>
+
+          <div class="dc-channel-card-btn" onclick="openDiscordChannel('fav', '猜TA喜欢', '根据TA私下最容易心动的隐秘XP偏好推荐')">
+            <div class="dc-chan-btn-left">
+              <div class="dc-chan-icon-box" style="background: rgba(236,72,153,0.15); border-color: rgba(236,72,153,0.35); color: #f472b6;">💖</div>
+              <div>
+                <div class="dc-chan-btn-title"># 猜TA喜欢</div>
+                <div class="dc-chan-btn-desc">私密XP、反差萌、病娇占有或身边人代餐</div>
+              </div>
+            </div>
+            <span class="dc-chan-arrow">›</span>
+          </div>
+
+          <div class="dc-channel-card-btn" onclick="openDiscordChannel('random', '全球卡片广场', '来自全球社区玩家分享的脑洞大开神卡')">
+            <div class="dc-chan-btn-left">
+              <div class="dc-chan-icon-box" style="background: rgba(56,189,248,0.15); border-color: rgba(56,189,248,0.35); color: #38bdf8;">🎲</div>
+              <div>
+                <div class="dc-chan-btn-title"># 全球广场</div>
+                <div class="dc-chan-btn-desc">天马行空、反套路创意与趣味剧情角色</div>
+              </div>
+            </div>
+            <span class="dc-chan-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- 频道组 2: 核心题材 -->
+        <div>
+          <div class="dc-mobile-cat-title">⚔️ 热门剧本频道</div>
+
+          <div class="dc-channel-card-btn" onclick="openDiscordChannel('rival', '宿敌与相爱相杀', '强强对抗、假面伪装、针锋相对的高张力博弈')">
+            <div class="dc-chan-btn-left">
+              <div class="dc-chan-icon-box" style="background: rgba(244,63,94,0.15); border-color: rgba(244,63,94,0.35); color: #fb7185;">💥</div>
+              <div>
+                <div class="dc-chan-btn-title"># 宿敌与相爱相杀</div>
+                <div class="dc-chan-btn-desc">暗室审讯、卧底潜伏、先动心谁就输了</div>
+              </div>
+            </div>
+            <span class="dc-chan-arrow">›</span>
+          </div>
+
+          <div class="dc-channel-card-btn" onclick="openDiscordChannel('dark', '深渊与异世界', '恶魔领主、堕落神祇、疯批暴君、深渊契约')">
+            <div class="dc-chan-btn-left">
+              <div class="dc-chan-icon-box" style="background: rgba(168,85,247,0.15); border-color: rgba(168,85,247,0.35); color: #c084fc;">🍷</div>
+              <div>
+                <div class="dc-chan-btn-title"># 深渊与异世界</div>
+                <div class="dc-chan-btn-desc">宏大架空世界观、人外契约、统治者沦陷</div>
+              </div>
+            </div>
+            <span class="dc-chan-arrow">›</span>
+          </div>
+
+          <div class="dc-channel-card-btn" onclick="openDiscordChannel('urban', '都市秘密推拉', '禁欲高管上司、秘密合租室友、伪骨科禁断')">
+            <div class="dc-chan-btn-left">
+              <div class="dc-chan-icon-box" style="background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.35); color: #fbbf24;">🏙️</div>
+              <div>
+                <div class="dc-chan-btn-title"># 都市秘密推拉</div>
+                <div class="dc-chan-btn-desc">表面若无其事，私下暗流涌动的现代暧昧</div>
+              </div>
+            </div>
+            <span class="dc-chan-arrow">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 视图二：手机端点击进入后的具体频道消息流页 -->
+    <div class="dc-mobile-channel-view" id="dc-page-channel">
+      <div class="dc-chan-nav">
+        <button class="dc-back-btn" onclick="backToDiscordHome()">
+          <span>◀</span> <span>频道列表</span>
+        </button>
+        <div class="dc-chan-nav-title">
+          <span style="color: #80848e;">#</span>
+          <span id="dc-active-channel-name">猜TA喜欢</span>
+        </div>
+        <div class="dc-chan-actions">
+          <button class="dc-btn-refresh" id="btn-dc-fetch" onclick="fetchNewDiscordCards()">
+            <span id="dc-fetch-icon">🔄</span>
+            <span>换一批</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 搜索栏 & 性别偏好选择器 -->
+      <div class="dc-search-bar-wrap" style="flex-direction: column; gap: 6px;">
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <input type="text" class="dc-search-input" id="dc-search-kw" placeholder="搜索/抓取卡片关键词(如: 傲娇同桌 / 执政官)..." onkeydown="if(event.key==='Enter') searchDiscordFeed()">
+          <button class="dc-search-btn" style="background:#5865F2; color:#fff; font-weight:600;" onclick="searchDiscordFeed()">🔍 搜索</button>
+        </div>
+
+        <!-- 性别/对戏偏好选择器 -->
+        <div style="display: flex; align-items: center; justify-content: space-between; background: #1e1f22; border: 1px solid #383a40; border-radius: 8px; padding: 4px 8px;">
+          <span style="font-size: 11px; color: #949ba4; font-weight: 600;">🎯 角色性别/性向偏好：</span>
+          <select id="dc-gender-pref" style="background: #2b2d31; border: 1px solid #4e5058; color: #f2f3f5; padding: 3px 6px; border-radius: 6px; font-size: 11px; outline: none; cursor: pointer;" onchange="onGenderPrefChange()">
+            <option value="any">✨ 不限 / 自由匹配</option>
+            <option value="male">♂️ 男角色卡 (帅气/深情/霸道/病娇少年)</option>
+            <option value="female">♀️ 女角色卡 (傲娇/御姐/魅魔/甜美少女)</option>
+            <option value="nonbinary">⚧️ 人外 / 神秘中性设定</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 消息流容器 -->
+      <div class="dc-feed-scroll" id="dc-feed-scroll">
+        <!-- 动态生成 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 主题预设、自定义 CSS 注入与编写教程弹窗 -->
+  <div id="theme-modal" class="modal-mask">
+    <div class="modal-card" style="max-width: 340px; max-height: 85vh; overflow-y: auto;">
+      <div class="modal-title" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <span>🎨 主题皮肤 & 自定义 CSS</span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-sub); text-align: center;">
+        可一键切换内置美化主题，或粘贴属于你自己的专属 CSS！
+      </div>
+
+      <!-- 内置精品预设 -->
+      <div style="margin-top: 6px;">
+        <div style="font-size: 11.5px; font-weight: 700; color: #cbd5e1; margin-bottom: 6px;">✨ 精选预设皮肤</div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;" id="theme-preset-grid">
+          <button class="m-btn" style="background: linear-gradient(135deg, #1f1830, #0d0f14); border: 1px solid #8b5cf6; color: #c084fc; font-size: 11px;" onclick="applyPresetTheme('cyber_neon')">🔮 霓虹赛博 (默认)</button>
+          <button class="m-btn" style="background: linear-gradient(135deg, #38121f, #18090f); border: 1px solid #f43f5e; color: #fb7185; font-size: 11px;" onclick="applyPresetTheme('crimson_wine')">🍷 绯红微醺 (暗红)</button>
+          <button class="m-btn" style="background: linear-gradient(135deg, #0f2420, #091412); border: 1px solid #10b981; color: #6ee7b7; font-size: 11px;" onclick="applyPresetTheme('emerald_forest')">🌲 幽夜翡翠 (森系)</button>
+          <button class="m-btn" style="background: linear-gradient(135deg, #2a1b18, #140d0c); border: 1px solid #f59e0b; color: #fcd34d; font-size: 11px;" onclick="applyPresetTheme('vintage_parchment')">📜 羊皮纸复古 (暖褐)</button>
+          <button class="m-btn" style="background: linear-gradient(135deg, #13182c, #0a0d18); border: 1px solid #38bdf8; color: #7dd3fc; font-size: 11px;" onclick="applyPresetTheme('deep_sea')">🌊 深海星蓝 (冷冽)</button>
+          <button class="m-btn" style="background: linear-gradient(135deg, #2b1226, #160814); border: 1px solid #ec4899; color: #f472b6; font-size: 11px;" onclick="applyPresetTheme('sakura_pink')">🌸 甜诱樱粉 (恋爱)</button>
+        </div>
+      </div>
+
+      <!-- 自定义 CSS 文本框 -->
+      <div style="margin-top: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="font-size: 11.5px; font-weight: 700; color: #cbd5e1;">🛠️ 自定义 CSS 代码注入</span>
+          <span style="font-size: 10.5px; color: #ec4899; cursor: pointer; text-decoration: underline;" onclick="toggleCssGuide()">📖 查看编写教程</span>
+        </div>
+        <textarea id="custom-css-input" class="st-editor-input" rows="6" placeholder="在此粘贴你的自定义 CSS 代码...&#10;例: :root { --st-primary: #f43f5e; }" style="font-family: monospace; font-size: 11px;"></textarea>
+      </div>
+
+      <!-- CSS 编写说明折叠区 -->
+      <div id="css-guide-box" style="display: none; background: rgba(0,0,0,0.4); border: 1px dashed rgba(255,255,255,0.2); border-radius: 10px; padding: 10px; font-size: 11px; color: #94a3b8; line-height: 1.5;">
+        <div style="font-weight: 700; color: #fff; margin-bottom: 4px;">📘 SillyTavern CSS 适配规范：</div>
+        1. <b>核心变量覆盖</b>：通过 <code>:root { ... }</code> 快速改全套色系：<br>
+        • <code>--st-primary</code>: 主强调色（粉/红/紫）<br>
+        • <code>--st-accent</code>: 渐变辅助色<br>
+        • <code>--st-bg</code>: 全局深色底色<br>
+        • <code>--st-char-bubble</code>: NPC卡发言气泡背景<br>
+        • <code>--st-user-bubble</code>: TA马甲发言气泡背景<br>
+        2. <b>类名选择器直接美化</b>：<br>
+        • <code>.char-bubble</code>: NPC角色卡对话框（可加圆角/阴影/毛玻璃）<br>
+        • <code>.user-bubble</code>: TA马甲发言框<br>
+        • <code>.owner-real-os</code>: 屏幕外真实内心戏小黄条<br>
+        • <code>.wx-card-item</code>: 列表横向卡片项<br>
+        • <code>.action-text</code>: <i>*动作神态描写*</i> 的斜体颜色<br>
+        3. <b>自定义背景图</b>：<br>
+        <code>#st-root { background-image: url('你的图片地址') !important; background-size: cover; }</code>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 10px;">
+        <button class="m-btn m-cancel" onclick="closeModal('theme-modal')">关闭</button>
+        <button class="m-btn" style="background: rgba(255,255,255,0.1); color: #fff;" onclick="resetToDefaultCss()">🔄 重置</button>
+        <button class="m-btn m-primary" onclick="saveCustomCss()">💾 保存并应用</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const api = window.AiPhone;
+
+  let currentOwner = null;
+  let allCharacters = [];
+  let userProfile = null;
+  let currentMode = "spectator"; // spectator (吃瓜) | takeover (接管酒馆卡)
+  let isGenerating = false;
+  let currentView = "list"; // list (卡片列表微信页) | chat (对戏页)
+  let editingCardId = null; // 当前正在编辑器里改的卡片ID
+  let customCssStyleEl = null;
+
+  // 内置预设主题库
+  const THEME_PRESETS = {
+    cyber_neon: `/* 霓虹赛博 (默认) */
+:root {
+  --st-bg: #111318;
+  --st-card: rgba(22, 25, 34, 0.95);
+  --st-border: rgba(255, 255, 255, 0.1);
+  --st-primary: #ec4899;
+  --st-accent: #8b5cf6;
+  --st-char-bubble: #1c202a;
+  --st-user-bubble: #2d1e3d;
+  --text-main: #f3f4f6;
+  --text-sub: #9ca3af;
+}
+#st-root {
+  background: radial-gradient(circle at 50% 10%, #1f1830 0%, #0d0f14 80%);
+}`,
+    crimson_wine: `/* 绯红微醺 (暗红剧场) */
+:root {
+  --st-bg: #14090c;
+  --st-card: rgba(28, 12, 18, 0.95);
+  --st-border: rgba(244, 63, 94, 0.2);
+  --st-primary: #f43f5e;
+  --st-accent: #be123c;
+  --st-char-bubble: #240e16;
+  --st-user-bubble: #3f1422;
+  --text-main: #ffe4e6;
+  --text-sub: #fda4af;
+}
+#st-root {
+  background: radial-gradient(circle at 50% 10%, #3b101d 0%, #0e0508 80%);
+}
+.char-bubble { border-left-color: #f43f5e; }
+.user-bubble { border-right-color: #fb7185; }
+.action-text { color: #fda4af; }`,
+    emerald_forest: `/* 幽夜翡翠 (神秘森系) */
+:root {
+  --st-bg: #091412;
+  --st-card: rgba(12, 28, 24, 0.95);
+  --st-border: rgba(16, 185, 129, 0.2);
+  --st-primary: #10b981;
+  --st-accent: #059669;
+  --st-char-bubble: #0e241f;
+  --st-user-bubble: #133930;
+  --text-main: #ecfdf5;
+  --text-sub: #6ee7b7;
+}
+#st-root {
+  background: radial-gradient(circle at 50% 10%, #10382f 0%, #050d0b 80%);
+}
+.char-bubble { border-left-color: #10b981; }
+.user-bubble { border-right-color: #34d399; }
+.action-text { color: #6ee7b7; }`,
+    vintage_parchment: `/* 羊皮纸复古 (暖褐中世纪) */
+:root {
+  --st-bg: #17110e;
+  --st-card: rgba(36, 26, 21, 0.95);
+  --st-border: rgba(245, 158, 11, 0.2);
+  --st-primary: #f59e0b;
+  --st-accent: #d97706;
+  --st-char-bubble: #281d17;
+  --st-user-bubble: #3d2a20;
+  --text-main: #fef3c7;
+  --text-sub: #fde68a;
+}
+#st-root {
+  background: radial-gradient(circle at 50% 10%, #3d281a 0%, #120b08 80%);
+}
+.char-bubble { border-left-color: #f59e0b; }
+.user-bubble { border-right-color: #fbbf24; }
+.action-text { color: #fcd34d; }`,
+    deep_sea: `/* 深海星蓝 (冷冽科幻) */
+:root {
+  --st-bg: #090e17;
+  --st-card: rgba(13, 22, 38, 0.95);
+  --st-border: rgba(56, 189, 248, 0.2);
+  --st-primary: #38bdf8;
+  --st-accent: #0284c7;
+  --st-char-bubble: #101c30;
+  --st-user-bubble: #172a4a;
+  --text-main: #f0f9ff;
+  --text-sub: #7dd3fc;
+}
+#st-root {
+  background: radial-gradient(circle at 50% 10%, #11294d 0%, #05080e 80%);
+}
+.char-bubble { border-left-color: #38bdf8; }
+.user-bubble { border-right-color: #60a5fa; }
+.action-text { color: #93c5fd; }`,
+    sakura_pink: `/* 甜诱樱粉 (恋爱心跳) */
+:root {
+  --st-bg: #170b13;
+  --st-card: rgba(36, 14, 29, 0.95);
+  --st-border: rgba(244, 114, 182, 0.25);
+  --st-primary: #f472b6;
+  --st-accent: #db2777;
+  --st-char-bubble: #280e20;
+  --st-user-bubble: #401433;
+  --text-main: #fdf2f8;
+  --text-sub: #fbcfe8;
+}
+#st-root {
+  background: radial-gradient(circle at 50% 10%, #3d1430 0%, #10060d 80%);
+}
+.char-bubble { border-left-color: #f472b6; }
+.user-bubble { border-right-color: #f687b3; }
+.action-text { color: #fbcfe8; }`
+  };
+
+  // 酒馆卡库数据结构
+  let tavernData = {
+    activeCardId: null,
+    customCss: "",
+    cards: [] // [{ id, name, icon, description, personality, scenario, tags, userPersona, messages: [...] }]
+  };
+
+  async function init() {
+    try {
+      if (api) {
+        allCharacters = await api.characters.list();
+        const ctx = await api.app.getLaunchContext();
+        const targetId = ctx?.characterId || allCharacters[0]?.id;
+        if (targetId) {
+          currentOwner = await api.characters.get(targetId);
+        }
+        userProfile = await api.user.getProfile({ characterId: currentOwner?.id });
+      }
+    } catch (e) {
+      console.warn("Init fallback", e);
+    }
+
+    if (!currentOwner) {
+      currentOwner = { id: "char_default", name: "TA", avatar: "" };
+    }
+
+    renderHeader();
+    await loadTavernData();
+  }
+
+  function renderHeader() {
+    document.getElementById("top-owner-name").textContent = currentOwner.name || "TA";
+    document.getElementById("empty-owner-name").textContent = currentOwner.name || "TA";
+    const avatarEl = document.getElementById("top-owner-avatar");
+    if (currentOwner.avatar) {
+      avatarEl.innerHTML = `<img src="${currentOwner.avatar}">`;
+    } else {
+      avatarEl.textContent = "👤";
+    }
+  }
+
+  function switchMode(mode) {
+    currentMode = mode;
+    document.getElementById("tab-spectator").className = `mode-item ${mode==='spectator'?'active':''}`;
+    document.getElementById("tab-takeover").className = `mode-item ${mode==='takeover'?'active':''}`;
+
+    if (currentView === 'chat') {
+      if (mode === 'spectator') {
+        document.getElementById("dock-spectator").style.display = "flex";
+        document.getElementById("dock-takeover").style.display = "none";
+      } else {
+        document.getElementById("dock-spectator").style.display = "none";
+        document.getElementById("dock-takeover").style.display = "flex";
+        const card = getActiveCard();
+        if (api) api.ui.toast(`🎭 你已接管酒馆高级角色卡【${card?.name || '卡片'}】！直接回复TA，TA将做出心动回应！`);
+      }
+    }
+  }
+
+  function getActiveCard() {
+    if (!tavernData.cards || tavernData.cards.length === 0) return null;
+    let found = tavernData.cards.find(c => c.id === tavernData.activeCardId);
+    return found || tavernData.cards[0];
+  }
+
+  // 微信风格：渲染卡片横向列表
+  function renderWxCardsList() {
+    const container = document.getElementById("wx-cards-container");
+    const emptyEl = document.getElementById("empty-welcome-el");
+    container.innerHTML = "";
+
+    if (!tavernData.cards || tavernData.cards.length === 0) {
+      emptyEl.style.display = "flex";
+      return;
+    }
+
+    emptyEl.style.display = "none";
+
+    tavernData.cards.forEach(card => {
+      const item = document.createElement("div");
+      item.className = "wx-card-item";
+
+      // 头像：优先显示自定义图片，否则默认显示名字第一个字
+      const initialChar = (card.name || "卡").trim().charAt(0) || "👑";
+      const avatarHtml = card.avatar 
+        ? `<img src="${card.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:14px;">` 
+        : initialChar;
+
+      // 一句话简介
+      const brief = card.personality || card.description || card.scenario || "暂无一句话设定";
+      const uName = card.userPersona?.name || `${currentOwner.name}的马甲`;
+
+      item.innerHTML = `
+        <div class="wx-avatar">${avatarHtml}</div>
+        <div class="wx-info">
+          <div class="wx-row-top">
+            <div class="wx-name">${card.name}</div>
+            <div class="wx-badge">${card.tags?.[0] || '角色卡'}</div>
+          </div>
+          <div class="wx-user-tag">👤 TA扮演: ${uName}</div>
+          <div class="wx-desc">${brief}</div>
+        </div>
+        <button class="wx-del-btn" title="删除此卡" onclick="deleteWxCard(event, '${card.id}')">🗑️</button>
+      `;
+
+      item.onclick = () => {
+        openChatSession(card.id);
+      };
+
+      container.appendChild(item);
+    });
+  }
+
+  // 打开具体角色的对戏会话
+  function openChatSession(cardId) {
+    tavernData.activeCardId = cardId;
+    currentView = "chat";
+
+    document.getElementById("cards-list-view").style.display = "none";
+    document.getElementById("chat-session-view").style.display = "flex";
+    document.getElementById("st-bottom-bar").style.display = "flex";
+
+    const card = getActiveCard();
+    const uName = card?.userPersona?.name || `${currentOwner.name}的马甲`;
+    document.getElementById("chat-nav-user-tag").textContent = `TA扮演: ${uName}`;
+
+    if (currentMode === 'takeover') {
+      document.getElementById("dock-spectator").style.display = "none";
+      document.getElementById("dock-takeover").style.display = "flex";
+    } else {
+      document.getElementById("dock-spectator").style.display = "flex";
+      document.getElementById("dock-takeover").style.display = "none";
+    }
+
+    renderCardBanner();
+    renderChatStream();
+  }
+
+  // 返回角色卡列表
+  function backToCardsList() {
+    currentView = "list";
+    document.getElementById("chat-session-view").style.display = "none";
+    document.getElementById("st-bottom-bar").style.display = "none";
+    document.getElementById("cards-list-view").style.display = "flex";
+    renderWxCardsList();
+  }
+
+  async function deleteWxCard(e, cardId) {
+    e.stopPropagation();
+    tavernData.cards = tavernData.cards.filter(c => c.id !== cardId);
+    if (tavernData.activeCardId === cardId) {
+      tavernData.activeCardId = tavernData.cards[0]?.id || null;
+    }
+    await saveTavernData();
+    renderWxCardsList();
+    if (api) api.ui.toast("🗑️ 已删除该角色卡");
+  }
+
+  async function loadTavernData() {
+    const charId = currentOwner.id;
+    let saved = null;
+    if (api && api.db) {
+      try {
+        const list = await api.db.list("silly_tavern_data", { limit: 50 });
+        saved = list.find(s => s.characterId === charId);
+      } catch (e) {
+        console.warn("DB read err", e);
+      }
+    }
+
+    if (saved && saved.data && saved.data.cards && saved.data.cards.length > 0) {
+      tavernData = saved.data;
+    } else {
+      tavernData = { activeCardId: null, customCss: "", cards: [] };
+    }
+
+    // 应用自定义 CSS
+    applyCssToDocument(tavernData.customCss || "");
+
+    // 默认进入微信风格列表页
+    currentView = "list";
+    document.getElementById("chat-session-view").style.display = "none";
+    document.getElementById("st-bottom-bar").style.display = "none";
+    document.getElementById("cards-list-view").style.display = "flex";
+    renderWxCardsList();
+  }
+
+  function applyCssToDocument(cssText) {
+    if (!customCssStyleEl) {
+      customCssStyleEl = document.createElement("style");
+      customCssStyleEl.id = "st-custom-injected-css";
+      document.head.appendChild(customCssStyleEl);
+    }
+    customCssStyleEl.textContent = cssText || "";
+  }
+
+  function openThemeModal() {
+    document.getElementById("custom-css-input").value = tavernData.customCss || "";
+    document.getElementById("theme-modal").style.display = "flex";
+  }
+
+  function toggleCssGuide() {
+    const box = document.getElementById("css-guide-box");
+    box.style.display = box.style.display === "none" ? "block" : "none";
+  }
+
+  // Discord Hub 核心状态
+  let currentDiscordChannel = "fav"; // fav | random | rival | dark | urban
+  let discordFeedsCache = {}; // 频道缓存
+
+  function openDiscordHubModal() {
+    document.getElementById("dc-current-user-tag").textContent = `登录为: ${currentOwner.name}#${Math.floor(1000 + Math.random()*9000)}`;
+    document.getElementById("discord-hub-modal").style.display = "flex";
+    
+    // 默认进入频道主页
+    backToDiscordHome();
+  }
+
+  function closeDiscordHub() {
+    document.getElementById("discord-hub-modal").style.display = "none";
+  }
+
+  // 手机端：点击频道大按钮，进入该频道的动态消息流页
+  function openDiscordChannel(chanId, title, desc) {
+    currentDiscordChannel = chanId;
+    document.getElementById("dc-page-home").style.display = "none";
+    document.getElementById("dc-page-channel").style.display = "flex";
+    document.getElementById("dc-active-channel-name").textContent = title;
+    document.getElementById("dc-search-kw").value = "";
+
+    if (!discordFeedsCache[chanId] || discordFeedsCache[chanId].length === 0) {
+      fetchNewDiscordCards();
+    } else {
+      renderDiscordMessageStream(discordFeedsCache[chanId]);
+    }
+  }
+
+  // 手机端：从频道消息流返回频道列表主页
+  function backToDiscordHome() {
+    document.getElementById("dc-page-channel").style.display = "none";
+    document.getElementById("dc-page-home").style.display = "flex";
+  }
+
+  function onGenderPrefChange() {
+    fetchNewDiscordCards();
+  }
+
+  // 刷新当前频道的 Discord 消息流（支持多张、每次全新生成，严控性别与人设XP）
+  async function fetchNewDiscordCards() {
+    const btn = document.getElementById("btn-dc-fetch");
+    const icon = document.getElementById("dc-fetch-icon");
+    if (btn) btn.disabled = true;
+    if (icon) icon.className = "spin";
+
+    const ownerName = currentOwner.name || "TA";
+    const userName = userProfile?.name || "你";
+    const genderVal = document.getElementById("dc-gender-pref")?.value || "any";
+
+    const genderPromptMap = {
+      male: "【绝对硬性性别要求：生成的 3 张角色卡必须全部为【男性 (Male)】角色卡！严禁生成女角色！】",
+      female: "【绝对硬性性别要求：生成的 3 张角色卡必须全部为【女性 (Female)】角色卡！严禁生成男角色！】",
+      nonbinary: "【性别要求：神秘中性 / 人外 / 异星生命体 / 神秘神祇】",
+      any: "【性别要求：不限性别，自由平衡】"
+    };
+    const genderConstraint = genderPromptMap[genderVal] || "";
+
+    const channelPrompts = {
+      fav: `【频道：#猜TA喜欢 (深度契合 ${ownerName} 的隐秘XP)】：
+请深入结合【${ownerName}】真实的性格与暗戳戳的喜好，生成 3 张不同风格但绝对让TA欲罢不能的角色卡（包含反差萌、病娇独占、高岭之花被拉下神坛、或偷偷以【${userName}】为原型的专属代餐）。
+${genderConstraint}`,
+      random: `【频道：#全球广场 (天马行空无限制)】：
+请生成 3 张风格完全不同、极具新奇感与魅力的全球高赞角色卡（如赛博疯批杀手、毒舌优雅吸血鬼伯爵、深渊魔龙、搞笑深情欢喜冤家）。
+${genderConstraint}`,
+      rival: `【频道：#宿敌与相爱相杀 (强强对抗)】：
+请生成 3 张不同职业与背景的宿敌角色卡（如：帝国审判官×死刑犯卧底、死对头首席法师、商业死敌高管）。每张必须具备针锋相对、互相试探底线的极高张力！
+${genderConstraint}`,
+      dark: `【频道：#深渊与异世界 (奇幻与禁断契约)】：
+请生成 3 张深渊恶魔领主、堕落天使、异界疯批暴君、深海人外神明等宏大且带感的异世界角色卡。
+${genderConstraint}`,
+      urban: `【频道：#都市秘密推拉 (现代隐秘暧昧)】：
+请生成 3 张禁欲高管上司、秘密合租室友、年下反差小狼狗、职场双重身份谍影等现代都市暧昧角色卡。
+${genderConstraint}`
+    };
+
+    const instruction = channelPrompts[currentDiscordChannel] || channelPrompts.fav;
+
+    try {
+      if (api && api.ai) {
+        const prompt = `你现在是 Discord 服务器的【SillyTavern Card Bot】官方发布机器人。
+${instruction}
+
+请输出严格合法的 JSON 数组，必须生成 3 张不同的高质量角色卡：
+[
+  {
+    "id": "dc_${Date.now()}_1",
+    "name": "充满张力的角色名",
+    "gender": "${genderVal === 'male' ? '男' : (genderVal === 'female' ? '女' : '未知')}",
+    "avatar": "",
+    "author": "DiscordTag#${Math.floor(1000 + Math.random()*9000)}",
+    "color": "${genderVal === 'female' ? '#ec4899' : '#5865F2'}",
+    "tags": ["高张力", "W++设定", "${genderVal === 'female' ? '女性向/百合' : (genderVal === 'male' ? '男性向/乙女' : '全性向')}"],
+    "description": "[Traits=..., Appearance=..., Background=...]",
+    "personality": "性格核心矛盾与破防推拉机制（50字内）",
+    "scenario": "开场高冲突情境",
+    "firstMes": "第一句高质感开场白（包含丰富的 *动作神态细节* 与台词）",
+    "userPersona": { "name": "${ownerName}扮演的马甲名", "desc": "马甲身份与隐藏动机" }
+  }
+]`;
+
+        const res = await api.ai.generate({
+          characterId: currentOwner.id,
+          appTags: ["silly_tavern", "discord_stream"],
+          instruction: prompt
+        });
+
+        const parsed = parseJsonFromText(res.text);
+        if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+          discordFeedsCache[currentDiscordChannel] = parsed;
+          renderDiscordMessageStream(parsed);
+          if (api) api.ui.toast(`✨ #${document.getElementById("dc-active-channel-name").textContent} 已换一批全新卡片！`);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Fetch discord cards err", e);
+    } finally {
+      if (btn) btn.disabled = false;
+      if (icon) icon.className = "";
+    }
+
+    // 备用多张丰富数据
+    const isFemale = (genderVal === 'female');
+    const fallbackList = [
+      {
+        id: "dc_fb_1_" + Date.now(),
+        name: isFemale ? "高傲执政官·艾莲娜" : "帝国审判官·塞拉斯",
+        gender: isFemale ? "女" : "男",
+        author: "ShadowWeaver#4092",
+        color: isFemale ? "#ec4899" : "#5865F2",
+        tags: ["宿敌相爱相杀", "高冷禁欲", "支配与动摇"],
+        description: "[Traits=Cold, Dominant, Strict, Secretly Obsessive; Background=审讯室内的针锋相对]",
+        personality: "言辞犀利冷峻，眼神带着审视与压迫感，却会在你示弱或反击时指尖微微颤抖",
+        scenario: "昏暗的审讯室内，铁链声回荡，黑色皮手套缓缓靠近你的下颌...",
+        firstMes: "*居高临下地注视着你，黑色皮手套轻轻挑起你的下颌，银质肩章在微光下闪烁* “顽抗到此为止了。说吧，你的同伙在哪里？”",
+        userPersona: { name: "落魄反抗军卧底", desc: "掌握着核心机密的叛逆者，一直在暗中观察对方弱点" }
+      },
+      {
+        id: "dc_fb_2_" + Date.now(),
+        name: isFemale ? "纯情病娇同桌·苏晚" : "病娇学弟·林屿",
+        gender: isFemale ? "女" : "男",
+        author: "YandereCafe#1337",
+        color: "#f43f5e",
+        tags: ["病娇独占", "白切黑", "极限推拉"],
+        description: "[Traits=Obsessive, Sweet Exterior, Possessive; Background=雨天被反锁的教室]",
+        personality: "平时乖巧顺从，独处时眼神带着狂热执念，不允许你多看别人一眼",
+        scenario: "暴雨倾盆的傍晚，教室后门被咔哒一声反锁...",
+        firstMes: "*站在紧闭的门前，雨水顺着发梢滑落，嘴角带着一丝无辜而执拗的微笑* “雨下得这么大...今晚就在这里陪我，哪儿也别去好不好？”",
+        userPersona: { name: "温柔的同桌/前辈", desc: "原本以为对方很柔弱，直到今天才看清真实面目" }
+      },
+      {
+        id: "dc_fb_3_" + Date.now(),
+        name: isFemale ? "深渊魅魔领主·薇薇安" : "深渊魔王·阿斯蒙",
+        gender: isFemale ? "女" : "男",
+        author: "AbyssLore#8801",
+        color: "#a855f7",
+        tags: ["深渊契约", "人外禁断", "高傲女王/暴君"],
+        description: "[Traits=Seductive, Proud, Ancient Demon; Background=意外签订的生命共生契约]",
+        personality: "表面以玩弄凡人为乐，契约反噬时却极度渴望触碰你的体温",
+        scenario: "猩红王座大殿前，锁骨处的契约印记散发着滚烫的微光...",
+        firstMes: "*斜倚在黑曜石王座上，猩红的眼眸泛着轻蔑而玩味的笑意* “凡人，契约在发烫呢...是在渴望本座的赏赐么？”",
+        userPersona: { name: "契约召唤师", desc: "本想召唤普通使魔却不小心把魔王本尊绑架的法师" }
+      }
+    ];
+    discordFeedsCache[currentDiscordChannel] = fallbackList;
+    renderDiscordMessageStream(fallbackList);
+  }
+
+  // 渲染真实的 Discord 论坛消息流（可点击卡片查看专属全屏详情）
+  function renderDiscordMessageStream(messagesList) {
+    const scrollContainer = document.getElementById("dc-feed-scroll");
+    scrollContainer.innerHTML = "";
+
+    if (!messagesList || messagesList.length === 0) {
+      scrollContainer.innerHTML = `
+        <div style="text-align:center; padding: 40px 10px; color: #949ba4; font-size: 12px;">
+          当前频道暂无新卡片发布<br>
+          <button class="dc-tool-btn primary" style="margin: 10px auto 0;" onclick="fetchNewDiscordCards()">🔄 刷新此频道</button>
+        </div>
+      `;
+      return;
+    }
+
+    messagesList.forEach(item => {
+      const msgWrap = document.createElement("div");
+      msgWrap.className = "dc-msg-item";
+
+      const authorInitial = item.author ? item.author.charAt(0) : "D";
+      const tagsHtml = (item.tags || []).map(t => `<span style="font-size: 9.5px; background: rgba(88, 101, 242, 0.15); color: #c9cdfb; border: 1px solid rgba(88, 101, 242, 0.35); padding: 1px 5px; border-radius: 4px;">#${t}</span>`).join(" ");
+
+      msgWrap.innerHTML = `
+        <div class="dc-author-avatar">${authorInitial}</div>
+        <div class="dc-msg-content">
+          <div class="dc-msg-header">
+            <span class="dc-author-name">${item.author || "CardDev#1001"}</span>
+            <span class="dc-bot-tag">BOT</span>
+            <span class="dc-timestamp">今天 18:${Math.floor(10 + Math.random()*49)}</span>
+          </div>
+
+          <!-- 经典 Discord Embed 卡片：点击即可打开专门的详情页 -->
+          <div class="dc-embed" style="border-left-color: ${item.color || '#5865F2'}; cursor: pointer;" onclick="openDiscordCardDetail('${item.id}')">
+            <div class="dc-embed-title">
+              <span>🎴 ${item.name}</span>
+              <span style="font-size: 10px; color: #38bdf8; font-weight: 600;">点击查看完整设定 🔍</span>
+            </div>
+
+            <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px;">
+              ${tagsHtml}
+            </div>
+
+            <div class="dc-embed-desc" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+              <b style="color: #cbd5e1;">Personality:</b> ${item.personality}
+            </div>
+
+            <div class="dc-embed-firstmes" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+              <div style="font-size: 10px; color: #f472b6; font-weight: 700; margin-bottom: 2px;">💬 First Message 开场白预览:</div>
+              ${formatStText(item.firstMes)}
+            </div>
+
+            <div class="dc-embed-actions" style="margin-top: 6px;">
+              <span style="font-size: 10.5px; color: #a5b4fc; text-decoration: underline;">📜 查看专门描述 & 马甲</span>
+              <button class="dc-btn-import" onclick="event.stopPropagation(); importDiscordCard('${item.id}')">
+                <span>📥 导入开聊</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      scrollContainer.appendChild(msgWrap);
+    });
+  }
+
+  // 打开 Discord 角色卡全屏专属描述详情页
+  function openDiscordCardDetail(cardId) {
+    let cardData = null;
+    for (const k in discordFeedsCache) {
+      const found = (discordFeedsCache[k] || []).find(c => c.id === cardId);
+      if (found) { cardData = found; break; }
+    }
+
+    if (!cardData) return;
+
+    const initial = cardData.name.trim().charAt(0) || "🎴";
+    document.getElementById("dc-detail-avatar").textContent = initial;
+    document.getElementById("dc-detail-name").textContent = cardData.name;
+    document.getElementById("dc-detail-author").textContent = `发布者: ${cardData.author || 'Discord User'}`;
+    
+    const tagsContainer = document.getElementById("dc-detail-tags");
+    tagsContainer.innerHTML = (cardData.tags || []).map(t => `<span style="font-size: 10px; background: rgba(88, 101, 242, 0.2); color: #c9cdfb; border: 1px solid rgba(88, 101, 242, 0.4); padding: 2px 6px; border-radius: 4px;">#${t}</span>`).join(" ");
+
+    document.getElementById("dc-detail-desc").textContent = cardData.description || "[Traits=None, Appearance=None]";
+    document.getElementById("dc-detail-personality").textContent = cardData.personality || "暂无性格描述";
+    document.getElementById("dc-detail-scenario").textContent = cardData.scenario || "酒馆相遇";
+    document.getElementById("dc-detail-firstmes").innerHTML = formatStText(cardData.firstMes || "");
+    
+    const uP = cardData.userPersona || { name: `${currentOwner.name}的马甲`, desc: '玩家马甲' };
+    document.getElementById("dc-detail-user").textContent = `【${uP.name}】：${uP.desc || '专属对戏人设'}`;
+
+    const importBtn = document.getElementById("btn-dc-detail-import");
+    importBtn.onclick = () => {
+      closeModal('dc-card-detail-modal');
+      importDiscordCard(cardId);
+    };
+
+    document.getElementById("dc-card-detail-modal").style.display = "flex";
+  }
+
+  // 频道内搜索（每次严格生成并展示 3 张卡片，支持点击查看完整详情）
+  async function searchDiscordFeed() {
+    const input = document.getElementById("dc-search-kw");
+    const kw = (input ? input.value : "").trim();
+    if (!kw) {
+      if (api) api.ui.toast("请输入搜索关键词");
+      return;
+    }
+
+    const kwLower = kw.toLowerCase();
+    const genderVal = document.getElementById("dc-gender-pref")?.value || "any";
+    
+    // 1. 扫描所有频道历史缓存进行本地多重模糊匹配
+    let allCached = [];
+    for (const k in discordFeedsCache) {
+      allCached = allCached.concat(discordFeedsCache[k] || []);
+    }
+
+    const matched = allCached.filter(c => 
+      (c.name && c.name.toLowerCase().includes(kwLower)) || 
+      (c.tags || []).some(t => t.toLowerCase().includes(kwLower)) ||
+      (c.personality && c.personality.toLowerCase().includes(kwLower)) ||
+      (c.description && c.description.toLowerCase().includes(kwLower)) ||
+      (c.scenario && c.scenario.toLowerCase().includes(kwLower))
+    );
+
+    if (matched.length >= 3) {
+      renderDiscordMessageStream(matched.slice(0, 3));
+      if (api) api.ui.toast(`🔍 找到了 ${matched.length} 张匹配卡片！`);
+      return;
+    }
+
+    // 2. 如果本地不足 3 张，驱动 AI 在 Discord 社区实时生成 3 张严格契合关键词与性别偏好的新卡
+    if (api) api.ui.toast(`🌐 正在在 Discord 社区搜索抓取 3 张【${kw}】卡片...`);
+
+    const genderPromptMap = {
+      male: "【硬性性别约束：生成的 3 张角色卡必须全部为【男性 (Male)】角色卡！严禁生成女角色！】",
+      female: "【硬性性别约束：生成的 3 张角色卡必须全部为【女性 (Female)】角色卡！严禁生成男角色！】",
+      nonbinary: "【性别约束：人外 / 神秘中性】",
+      any: "【性别：自由平衡】"
+    };
+
+    try {
+      if (api && api.ai) {
+        const prompt = `你现在是 Discord 服务器的【SillyTavern Card Bot】官方发布机器人。
+玩家在频道内搜索了关键词【${kw}】。
+${genderPromptMap[genderVal] || ''}
+请为玩家生成 3 张不同职业、不同性格矛盾且严格契合关键词【${kw}】的高质量 W++ 角色卡与对应的玩家马甲。
+
+请输出合法的 JSON 数组（必须包含 3 条）：
+[
+  {
+    "id": "dc_sr_${Date.now()}_1",
+    "name": "契合${kw}的充满张力的角色名1",
+    "author": "Bot_${kw}#${Math.floor(1000 + Math.random()*9000)}",
+    "color": "#5865F2",
+    "tags": ["${kw}", "精选搜索", "W++"],
+    "description": "[Traits=..., Appearance=..., Background=...]",
+    "personality": "性格特点与破防推拉机制（50字内）",
+    "scenario": "开场高冲突场景",
+    "firstMes": "第一句高质感开场白（包含丰富的 *动作神态细节* 与台词）",
+    "userPersona": { "name": "${currentOwner.name}扮演的马甲名", "desc": "马甲身份与隐藏动机" }
+  },
+  {
+    "id": "dc_sr_${Date.now()}_2",
+    "name": "契合${kw}的充满张力的角色名2",
+    "author": "Bot_${kw}#${Math.floor(1000 + Math.random()*9000)}",
+    "color": "#ec4899",
+    "tags": ["${kw}", "反差萌", "W++"],
+    "description": "[Traits=..., Appearance=..., Background=...]",
+    "personality": "性格特点与破防推拉机制（50字内）",
+    "scenario": "开场高冲突场景",
+    "firstMes": "第一句高质感开场白（包含丰富的 *动作神态细节* 与台词）",
+    "userPersona": { "name": "${currentOwner.name}扮演的马甲名", "desc": "马甲身份与隐藏动机" }
+  },
+  {
+    "id": "dc_sr_${Date.now()}_3",
+    "name": "契合${kw}的充满张力的角色名3",
+    "author": "Bot_${kw}#${Math.floor(1000 + Math.random()*9000)}",
+    "color": "#10b981",
+    "tags": ["${kw}", "强推拉", "W++"],
+    "description": "[Traits=..., Appearance=..., Background=...]",
+    "personality": "性格特点与破防推拉机制（50字内）",
+    "scenario": "开场高冲突场景",
+    "firstMes": "第一句高质感开场白（包含丰富的 *动作神态细节* 与台词）",
+    "userPersona": { "name": "${currentOwner.name}扮演的马甲名", "desc": "马甲身份与隐藏动机" }
+  }
+]`;
+
+        const res = await api.ai.generate({
+          characterId: currentOwner.id,
+          appTags: ["silly_tavern", "dc_search"],
+          instruction: prompt
+        });
+
+        const p = parseJsonFromText(res.text);
+        if (p && Array.isArray(p) && p.length > 0) {
+          discordFeedsCache[currentDiscordChannel] = p.concat(discordFeedsCache[currentDiscordChannel] || []);
+          renderDiscordMessageStream(p.slice(0, 3));
+          if (api) api.ui.toast(`✨ 成功从 Discord 抓取到 3 张【${kw}】卡片！点击可看详情！`);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Search generate error:", e);
+    }
+
+    // 终极保底 3 张生成：确保每次搜索必定完整展示 3 张卡片
+    const isFemale = (genderVal === 'female');
+    const directFallback = [
+      {
+        id: "dc_sr_fb_1_" + Date.now(),
+        name: isFemale ? `${kw}·薇尔莉特` : `${kw}·塞恩`,
+        author: `Bot_${kw}#1024`,
+        color: isFemale ? "#ec4899" : "#5865F2",
+        tags: [kw, "精选搜索", "高冷禁欲"],
+        description: `[Traits=Sharp, Mysterious, Deep Emotion; Keyword=${kw}]`,
+        personality: `表面冷峻神秘，但在面对你时眼神充满掩饰不住的暗流涌动与占有欲`,
+        scenario: `关于【${kw}】的专属隐秘场景，空气中弥漫着紧张而暧昧的气氛...`,
+        firstMes: `*静静凝视着你，修长的手指微微收紧* “你既然主动找上门来...就该做好被我彻底看穿的准备。”`,
+        userPersona: { name: `${currentOwner.name}的马甲`, desc: `带着秘密接近对方的探索者` }
+      },
+      {
+        id: "dc_sr_fb_2_" + Date.now(),
+        name: isFemale ? `${kw}·白桃` : `${kw}·林绪`,
+        author: `Yandere_${kw}#2048`,
+        color: "#f43f5e",
+        tags: [kw, "病娇反差", "白切黑"],
+        description: `[Traits=Sweet Exterior, Obsessive, Clingy; Keyword=${kw}]`,
+        personality: `平时软萌听话，但一旦触碰其底线就会暴露出偏执强烈的独占欲`,
+        scenario: `深夜静谧的房间里，关于【${kw}】的秘密终于浮出水面...`,
+        firstMes: `*轻轻歪着头微笑，眼神却格外深邃* “从今以后，你眼里的焦点只许有我一个人哦。”`,
+        userPersona: { name: `被依赖的对象`, desc: `一直没发现对方真实内心的温柔存在` }
+      },
+      {
+        id: "dc_sr_fb_3_" + Date.now(),
+        name: isFemale ? `${kw}·尤菲米娅` : `${kw}·阿斯蒙`,
+        author: `Abyss_${kw}#3096`,
+        color: "#a855f7",
+        tags: [kw, "深渊宿敌", "傲娇女王/暴君"],
+        description: `[Traits=Proud, Powerful, Tsundere; Keyword=${kw}]`,
+        personality: `傲慢决绝，视你为唯一的对手与宿命，绝不向任何人低头`,
+        scenario: `宏大的对决大殿前，两人的兵刃与目光在半空中碰撞...`,
+        firstMes: `*冷哼一声，居高临下地俯视着你* “除了本座，这世上没人有资格打败你。”`,
+        userPersona: { name: `宿命之敌`, desc: `与对方纠缠博弈多年的强强对手` }
+      }
+    ];
+
+    discordFeedsCache[currentDiscordChannel] = directFallback.concat(discordFeedsCache[currentDiscordChannel] || []);
+    renderDiscordMessageStream(directFallback);
+    if (api) api.ui.toast(`✨ 已为你生成 3 张【${kw}】专属卡片！点击可查看详细设定！`);
+  }
+
+  // 一键将 Discord 卡导入 SillyTavern 并直接开聊
+  async function importDiscordCard(cardId) {
+    let cardData = null;
+    for (const k in discordFeedsCache) {
+      const found = (discordFeedsCache[k] || []).find(c => c.id === cardId);
+      if (found) { cardData = found; break; }
+    }
+
+    if (!cardData) return;
+
+    const newCard = {
+      id: "card_imported_" + Date.now(),
+      name: cardData.name,
+      avatar: cardData.avatar || "",
+      icon: "🎴",
+      description: cardData.description,
+      personality: cardData.personality,
+      scenario: cardData.scenario,
+      tags: cardData.tags || ["Discord导入", "W++"],
+      userPersona: cardData.userPersona || { name: `${currentOwner.name}的马甲`, desc: "" },
+      messages: [
+        { role: 'char', content: cardData.firstMes, time: "刚刚" },
+        { role: 'user', content: `*抬眼看向你* ...${cardData.name}？`, innerOs: "从Discord导入的新卡，看看怎么聊！", time: "刚刚" }
+      ]
+    };
+
+    tavernData.cards = tavernData.cards || [];
+    tavernData.cards.unshift(newCard);
+    await saveTavernData();
+
+    closeDiscordHub();
+    openChatSession(newCard.id);
+
+    if (api) api.ui.toast(`🎉 成功从 Discord 导入【${cardData.name}】！已直接进入对戏！`);
+  }
+
+  function applyPresetTheme(presetKey) {
+    const css = THEME_PRESETS[presetKey] || "";
+    document.getElementById("custom-css-input").value = css;
+    applyCssToDocument(css);
+    if (api) api.ui.toast(`🎨 已切换为【${presetKey}】皮肤！点击保存即可持久化！`);
+  }
+
+  async function saveCustomCss() {
+    const css = document.getElementById("custom-css-input").value.trim();
+    tavernData.customCss = css;
+    applyCssToDocument(css);
+    await saveTavernData();
+    closeModal("theme-modal");
+    if (api) api.ui.toast("💾 自定义 CSS 主题已保存并生效！");
+  }
+
+  async function resetToDefaultCss() {
+    document.getElementById("custom-css-input").value = "";
+    tavernData.customCss = "";
+    applyCssToDocument("");
+    await saveTavernData();
+    if (api) api.ui.toast("🔄 已重置为默认霓虹暗黑主题！");
+  }
+
+  async function saveTavernData() {
+    const charId = currentOwner.id;
+    if (api && api.db) {
+      try {
+        const list = await api.db.list("silly_tavern_data", { limit: 50 });
+        const exist = list.find(s => s.characterId === charId);
+        if (exist) {
+          await api.db.update("silly_tavern_data", exist.id, {
+            characterId: charId,
+            data: tavernData,
+            updatedAt: new Date().toISOString()
+          });
+        } else {
+          await api.db.create("silly_tavern_data", {
+            characterId: charId,
+            data: tavernData,
+            updatedAt: new Date().toISOString()
+          });
+        }
+      } catch (e) {
+        console.warn("DB save err", e);
+      }
+    }
+  }
+
+  function renderCardBanner() {
+    const card = getActiveCard();
+    if (!card) return;
+    document.getElementById("cur-card-name").textContent = card.name || "SillyTavern Card";
+    document.getElementById("cur-card-preview").textContent = card.personality || card.description || "暂无描述";
+    
+    const iconEl = document.getElementById("cur-card-icon");
+    if (card.avatar) {
+      iconEl.innerHTML = `<img src="${card.avatar}" style="width:100%;height:100%;object-fit:cover;">`;
+    } else {
+      const initialChar = (card.name || "卡").trim().charAt(0) || "👑";
+      iconEl.textContent = initialChar;
+    }
+
+    const tagsRow = document.getElementById("cur-card-tags");
+    tagsRow.innerHTML = "";
+    if (card.userPersona) {
+      const upPill = document.createElement("div");
+      upPill.className = "card-tag-pill";
+      upPill.style.color = "#f472b6";
+      upPill.style.background = "rgba(236, 72, 153, 0.2)";
+      upPill.textContent = `👤 TA扮演: ${card.userPersona.name || '自设马甲'}`;
+      tagsRow.appendChild(upPill);
+    }
+    (card.tags || ["高级角色卡", "W++设定"]).forEach(t => {
+      const pill = document.createElement("div");
+      pill.className = "card-tag-pill";
+      pill.textContent = t;
+      tagsRow.appendChild(pill);
+    });
+  }
+
+  function formatStText(text) {
+    if (!text) return "";
+    return text.replace(/\*([^\*]+)\*/g, '<span class="action-text">*$1*</span>');
+  }
+
+  function renderChatStream() {
+    const card = getActiveCard();
+    const container = document.getElementById("st-stream-container");
+    container.innerHTML = "";
+
+    if (!card || !card.messages || card.messages.length === 0) return;
+
+    card.messages.forEach((msg, idx) => {
+      const wrap = document.createElement("div");
+      wrap.className = "st-msg-wrap";
+
+      const delBtnHtml = `<button onclick="deleteChatMessage(${idx})" style="background:transparent; border:none; color:#f87171; font-size:11px; cursor:pointer; opacity:0.7; padding:2px 4px;" title="删除这轮对话">🗑️ 删除</button>`;
+
+      if (msg.role === 'char') {
+        wrap.innerHTML = `
+          <div class="char-bubble">
+            <div class="char-bubble-header">
+              <span>${card?.icon || '👑'} ${card?.name || '酒馆角色'} ${msg.isTakeover ? '<span style="color:#a78bfa; font-weight:normal;">(你接管回复)</span>' : ''}</span>
+              <div style="display:flex; align-items:center; gap:6px;">
+                ${delBtnHtml}
+                <span style="font-size:10px; opacity:0.6;">SillyTavern AI</span>
+              </div>
+            </div>
+            <div>${formatStText(msg.content)}</div>
+          </div>
+          ${msg.readOs ? `
+            <div class="owner-real-os" style="background: rgba(236, 72, 153, 0.12); border-color: rgba(236, 72, 153, 0.4); color: #fbcfe8;">
+              <span>👀【${currentOwner.name}看到此回复的真实反应】: “${msg.readOs}”</span>
+            </div>
+          ` : ''}
+        `;
+      } else if (msg.role === 'user') {
+        const uName = card.userPersona?.name || currentOwner.name;
+        wrap.innerHTML = `
+          <div class="user-bubble">
+            <div class="user-bubble-header">
+              <span>👤 ${currentOwner.name} <span style="font-size:10px; opacity:0.8; color:#fbcfe8;">(扮演: ${uName})</span></span>
+              <div style="display:flex; align-items:center; gap:6px;">
+                ${delBtnHtml}
+                <span style="font-size:10px; opacity:0.6;">User Input</span>
+              </div>
+            </div>
+            <div>${formatStText(msg.content)}</div>
+          </div>
+          ${msg.sendOs ? `
+            <div class="owner-real-os">
+              <span>💭【${currentOwner.name}打字时的心声】: “${msg.sendOs}”</span>
+            </div>
+          ` : (msg.innerOs ? `
+            <div class="owner-real-os">
+              <span>💭【${currentOwner.name}打字时的心声】: “${msg.innerOs}”</span>
+            </div>
+          ` : '')}
+        `;
+      }
+
+      container.appendChild(wrap);
+    });
+
+    const scrollArea = document.getElementById("chat-session-view");
+    if (scrollArea) {
+      scrollArea.scrollTop = scrollArea.scrollHeight;
+    }
+  }
+
+  async function deleteChatMessage(index) {
+    const card = getActiveCard();
+    if (!card || !card.messages) return;
+    card.messages.splice(index, 1);
+    await saveTavernData();
+    renderChatStream();
+    if (api) api.ui.toast("🗑️ 已删除该条消息");
+  }
+
+  function updateAvatarPreview() {
+    const name = document.getElementById("field-char-name").value.trim();
+    const avatarUrl = document.getElementById("field-char-avatar").value.trim();
+    const previewBox = document.getElementById("editor-avatar-preview");
+    
+    if (avatarUrl) {
+      previewBox.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+    } else {
+      const initial = name ? name.charAt(0) : "卡";
+      previewBox.innerHTML = initial;
+    }
+  }
+
+  function handleAvatarUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const b64 = e.target.result;
+      document.getElementById("field-char-avatar").value = b64;
+      updateAvatarPreview();
+      if (api) api.ui.toast("✅ 头像上传成功！");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // 打开可交互的卡片编辑器
+  function openLiveEditorModal(isEdit = false, cardData = null) {
+    closeModal("drawer-modal");
+    editingCardId = isEdit && cardData ? cardData.id : null;
+    
+    if (isEdit && cardData) {
+      document.getElementById("editor-sub-status").textContent = "✏️ 正在编辑已有角色卡...";
+      document.getElementById("field-char-name").value = cardData.name || "";
+      document.getElementById("field-char-avatar").value = cardData.avatar || "";
+      document.getElementById("field-char-desc").value = cardData.description || "";
+      document.getElementById("field-char-persona").value = cardData.personality || "";
+      document.getElementById("field-char-scenario").value = cardData.scenario || "";
+      document.getElementById("field-char-firstmes").value = cardData.messages?.[0]?.content || "";
+      document.getElementById("field-user-name").value = cardData.userPersona?.name || "";
+      document.getElementById("field-user-desc").value = cardData.userPersona?.desc || "";
+      document.getElementById("editor-inner-os").textContent = "修改细节，让对戏更加刺激精准！";
+    } else {
+      document.getElementById("editor-sub-status").textContent = "支持 TA 自动生成、你手动修改或逐项让 AI 脑补";
+      document.getElementById("field-char-name").value = "";
+      document.getElementById("field-char-avatar").value = "";
+      document.getElementById("field-char-desc").value = "";
+      document.getElementById("field-char-persona").value = "";
+      document.getElementById("field-char-scenario").value = "";
+      document.getElementById("field-char-firstmes").value = "";
+      document.getElementById("field-user-name").value = "";
+      document.getElementById("field-user-desc").value = "";
+      document.getElementById("editor-inner-os").textContent = "嘿嘿...这次要捏一个戳我的高级剧本！";
+    }
+
+    updateAvatarPreview();
+    document.getElementById("live-editor-modal").style.display = "flex";
+  }
+
+  function editCurrentActiveCard() {
+    const card = getActiveCard();
+    if (card) {
+      openLiveEditorModal(true, card);
+    }
+  }
+
+  function onXpStyleChange() {
+    const style = document.getElementById("field-xp-style").value;
+    const osMap = {
+      xp_wild: "嘿嘿...这种反差和支配欲满载的卡，只有在酒馆里才敢偷偷玩！",
+      rival_clash: "谁先动心谁就输了，这种针锋相对的极限推拉才刺激！",
+      fantasy_dark: "架空世界观！带感的人外/大反派/神明堕落剧本！",
+      modern_tension: "表面若无其事，私底下暗流涌动...太戳我了！",
+      familiar_proxy: "偷偷以现实中的人设做代餐妄想...绝不能被发现！",
+      free_random: "今天就放飞自我，来个完全意想不到的疯狂XP设定！"
+    };
+    document.getElementById("editor-inner-os").textContent = osMap[style] || "这次要捏一个超戳我的专属剧本！";
+  }
+
+  // 1. 逐项 AI 单独生成
+  async function generateSingleField(type) {
+    if (!api || !api.ai) return;
+    const ownerName = currentOwner.name || "TA";
+    const userName = userProfile?.name || "你";
+    const currentName = document.getElementById("field-char-name").value.trim() || "神秘角色";
+    const xpStyle = document.getElementById("field-xp-style")?.value || "xp_wild";
+
+    const styleDescMap = {
+      xp_wild: "【风格：隐秘XP爆发/反差萌/病娇占有欲/高岭之花沦陷/下克上】",
+      rival_clash: "【风格：宿敌相爱相杀/互相试探底线/假扮伪装/针锋相对】",
+      fantasy_dark: "【风格：奇幻异世界/恶魔执政官/暗黑暴君/神性堕落/禁断契约】",
+      modern_tension: "【风格：都市隐秘暧昧/禁欲上司/年下反差小狼狗/伪骨科/秘密合租】",
+      familiar_proxy: `【风格：偷偷以身边人【${userName}】为原型的代餐推拉妄想】`,
+      free_random: "【风格：完全放飞自我/天马行空的脑洞/极具反差新奇感的角色】"
+    };
+    const stylePrompt = styleDescMap[xpStyle] || "";
+
+    const prompts = {
+      name: `【绝不能捏${ownerName}自己！】你正在玩SillyTavern。请根据${stylePrompt}，为你想撩/对戏的NPC角色起一个充满性张力或戏剧张力的高级名字（15字内，直接输出名字，不要带双引号）`,
+      desc: `请为对戏角色卡【${currentName}】根据${stylePrompt}，生成一段 W++ 结构化外貌与深度背景设定（如 [Traits=..., Background=..., Flaws=...]，60字以内），直接输出内容`,
+      persona: `请为对戏角色卡【${currentName}】根据${stylePrompt}，生成一段深度性格特质、隐藏弱点与推拉口癖机制（50字以内），拒绝千篇一律，突出反差与心理防线，直接输出内容`,
+      scenario: `请为【${ownerName}】和对戏角色【${currentName}】根据${stylePrompt}构思一个高情景张力、充满戏剧冲突或隐秘气氛的开场 Scenario 场景（40字以内），直接输出内容`,
+      firstmes: `请为对戏角色【${currentName}】根据${stylePrompt}写一句极具电影感和动作神态张力的 First Message 开场白（包含*动作神态环境细节*与第一句台词），直接输出文本`,
+      user: `请让【${ownerName}】为TA自己起一个契合${stylePrompt}剧情的专属 User Persona 玩家马甲（名字和动机）。输出JSON：{"name":"马甲名","desc":"马甲人设动机"}`
+    };
+
+    if (api) api.ui.toast(`✨ 正在为【${type}】生成灵感...`);
+
+    try {
+      const res = await api.ai.generate({
+        characterId: currentOwner.id,
+        appTags: ["silly_tavern", "field_gen"],
+        instruction: prompts[type] || "请生成该项内容"
+      });
+
+      const text = res.text?.trim() || "";
+      if (type === 'name') document.getElementById("field-char-name").value = text.replace(/["“”]/g, '');
+      else if (type === 'desc') document.getElementById("field-char-desc").value = text;
+      else if (type === 'persona') document.getElementById("field-char-persona").value = text;
+      else if (type === 'scenario') document.getElementById("field-char-scenario").value = text;
+      else if (type === 'firstmes') document.getElementById("field-char-firstmes").value = text;
+      else if (type === 'user') {
+        const p = parseJsonFromText(text);
+        if (p) {
+          document.getElementById("field-user-name").value = p.name || `${ownerName}的马甲`;
+          document.getElementById("field-user-desc").value = p.desc || "";
+        }
+      }
+      if (api) api.ui.toast("✅ 生成并填入成功！");
+    } catch (e) {
+      console.warn("Field gen err", e);
+      if (api) api.ui.toast("生成失败，请重试");
+    }
+  }
+
+  // 2. 一键让 TA 全自动捏满所有项
+  async function autoGenerateAllFields() {
+    const btn = document.getElementById("btn-auto-all");
+    btn.innerHTML = `<span class="spin">🔄</span> TA正在疯狂脑补...`;
+    btn.disabled = true;
+
+    try {
+      if (api && api.ai) {
+        const ownerName = currentOwner.name || "TA";
+        const userName = userProfile?.name || "你";
+        const xpStyle = document.getElementById("field-xp-style")?.value || "xp_wild";
+
+        const styleDescMap = {
+          xp_wild: "【私密隐秘XP大爆发：追求反差萌、病娇占有、高岭之花被拉下神坛、年下攻/年上克制、外表冷酷私下极度依赖等极具反差和隐秘快感的设定】",
+          rival_clash: "【宿敌与相爱相杀：强强对决、各怀鬼胎的卧底与审判官、表面针锋相对暗地互相拉扯试探底线】",
+          fantasy_dark: "【奇幻异世界与禁断契约：暗黑执政官、堕落神祇、疯批暴君、深渊恶魔等宏大且带感的世界观】",
+          modern_tension: "【都市隐秘推拉：禁欲上司、秘密同居室友、双重身份、戴着面具的社交博弈】",
+          familiar_proxy: `【身边人代餐妄想：偷偷以现实中认识的【${userName}】为原型，注入专属的暗恋、傲娇或反差剧情】`,
+          free_random: "【完全放飞自我：不受任何常规人设束缚，根据TA最天马行空的脑洞和XP狂想自由发挥】"
+        };
+
+        const prompt = `【核心指令：SillyTavern高阶角色卡构建】
+你的真实身份是【${ownerName}】。你打开了 SillyTavern，准备完全放飞自我，捏一张真正戳中你XP、让你私下欲罢不能的高级NPC角色卡来对戏。
+【本次选择的XP风格倾向】：${styleDescMap[xpStyle] || '放飞自我'}
+【绝对规则】：
+1. 严禁把 Character Name 捏成【${ownerName}】自己！这是你要去攻略/对戏的NPC！
+2. 拒绝套路化和模板化的机械表述，必须具备真实剧本感、鲜明弱点与张力。
+3. 同时为【${ownerName}】本人生成一个专属的【玩家马甲 (User Persona)】以融入剧情。
+
+请严格输出合法 JSON：
+{
+  "name": "充满张力的角色卡名字（如：执政官·塞拉斯 / 纯情病娇白切黑 / 傲慢的宿敌首席）",
+  "icon": "👑/🐺/🌸/🗡️/🖤/🍷/🎀/🕯️",
+  "description": "W++ 结构化设定 [Traits=..., Appearance=..., Background=..., Weakness=...]",
+  "personality": "性格核心矛盾、语言风格与推拉破防机制（50字内）",
+  "scenario": "开场场景与核心戏剧冲突（40字内）",
+  "tags": ["高张力", "专属设定", "极具反差"],
+  "first_mes": "极具电影感和动作神态细节的开场白（包含*动作神态描写*与第一句台词）",
+  "userPersona": {
+    "name": "你在这个剧本里扮演的专属马甲名（如：落魄刺客 / 贴身护卫 / 秘密卧底）",
+    "desc": "你的马甲身份与隐藏动机"
+  },
+  "inner_os": "你作为【${ownerName}】写完这张卡后，屏幕外的真实内心心声/脸红/暗爽/心虚（15字内，必须鲜活真实）"
+}`;
+
+        const res = await api.ai.generate({
+          characterId: currentOwner.id,
+          appTags: ["silly_tavern", "card_create"],
+          instruction: prompt
+        });
+
+        const p = parseJsonFromText(res.text);
+        if (p && p.name) {
+          document.getElementById("field-char-name").value = p.name;
+          document.getElementById("field-char-desc").value = p.description || "";
+          document.getElementById("field-char-persona").value = p.personality || "";
+          document.getElementById("field-char-scenario").value = p.scenario || "";
+          document.getElementById("field-char-firstmes").value = p.first_mes || "";
+          document.getElementById("field-user-name").value = p.userPersona?.name || `${ownerName}的马甲`;
+          document.getElementById("field-user-desc").value = p.userPersona?.desc || "";
+          document.getElementById("editor-inner-os").textContent = p.inner_os || "嘿嘿，这个设定太戳我了！马上开聊！";
+          if (api) api.ui.toast("🎉 TA 已全套构思完毕！你可以微调或直接保存！");
+        }
+      }
+    } catch (e) {
+      console.warn("Auto all err", e);
+      if (api) api.ui.toast("生成失败，请重试");
+    } finally {
+      btn.innerHTML = `⚡ 让TA一键全捏`;
+      btn.disabled = false;
+    }
+  }
+
+  // 3. 保存编辑后的卡片并存入历史卡库
+  async function saveEditedCardAndStart() {
+    const name = document.getElementById("field-char-name").value.trim() || "未命名角色卡";
+    const customAvatar = document.getElementById("field-char-avatar").value.trim() || "";
+    const desc = document.getElementById("field-char-desc").value.trim() || "[Traits=None]";
+    const persona = document.getElementById("field-char-persona").value.trim() || "神秘";
+    const scenario = document.getElementById("field-char-scenario").value.trim() || "酒馆中";
+    const firstMes = document.getElementById("field-char-firstmes").value.trim() || "*静静看着你* 你来了。";
+    const uName = document.getElementById("field-user-name").value.trim() || `${currentOwner.name}的马甲`;
+    const uDesc = document.getElementById("field-user-desc").value.trim() || "神秘旅人";
+    const innerOs = document.getElementById("editor-inner-os").textContent;
+
+    tavernData.cards = tavernData.cards || [];
+
+    let targetCardId = editingCardId;
+
+    if (editingCardId) {
+      // 修改已有卡
+      const exist = tavernData.cards.find(c => c.id === editingCardId);
+      if (exist) {
+        exist.name = name;
+        exist.avatar = customAvatar;
+        exist.description = desc;
+        exist.personality = persona;
+        exist.scenario = scenario;
+        exist.userPersona = { name: uName, desc: uDesc };
+        if (exist.messages && exist.messages.length > 0 && exist.messages[0].role === 'char') {
+          exist.messages[0].content = firstMes;
+        }
+      }
+    } else {
+      // 新建卡片并存入历史
+      const newCard = {
+        id: "card_" + Date.now(),
+        name: name,
+        avatar: customAvatar,
+        icon: "👑",
+        description: desc,
+        personality: persona,
+        scenario: scenario,
+        tags: ["高级角色卡", "W++"],
+        userPersona: { name: uName, desc: uDesc },
+        messages: [
+          { role: 'char', content: firstMes, time: "刚刚" },
+          { role: 'user', content: `*有些警惕地看着你* ${name}？`, innerOs: innerOs, time: "刚刚" }
+        ]
+      };
+      tavernData.cards.unshift(newCard);
+      targetCardId = newCard.id;
+    }
+
+    await saveTavernData();
+    closeModal("live-editor-modal");
+
+    // 保存后直接进入该角色的对戏会话
+    openChatSession(targetCardId);
+
+    if (api) api.ui.toast(`💾 角色卡【${name}】已保存进卡库并开启对戏！`);
+  }
+
+  // 推进一回合（支持吃瓜单步推进 或 用户假扮酒馆卡单向回应）
+  async function triggerNextTurn(userTakeoverInput = null) {
+    if (isGenerating) return;
+    const card = getActiveCard();
+    if (!card) {
+      openLiveEditorModal();
+      return;
+    }
+
+    isGenerating = true;
+    const btn = document.getElementById("btn-next-step");
+    if (btn) btn.innerHTML = `<span class="spin">🔄</span> 酒馆打字中...`;
+
+    const streamContainer = document.getElementById("st-stream-container");
+    const ownerName = currentOwner.name || "TA";
+    const uPersona = card.userPersona || { name: `${ownerName}的马甲`, desc: "" };
+    const recentMsgs = (card.messages || []).slice(-8);
+
+    // ==========================================
+    // 情况一：用户接管假扮酒馆 NPC 发送消息
+    // 逻辑：纯净假扮！只作为酒馆卡发出用户写的台词，绝不让 AI 角色卡二次续写；
+    // 仅生成【TA 屏幕外看到用户接管回复后的真实心动/抓狂/震惊反应】！
+    // ==========================================
+    if (userTakeoverInput) {
+      try {
+        if (api && api.ai) {
+          const prompt = `【核心场景：你在玩 SillyTavern，对面的高级角色卡刚刚发来了一条回复】
+你的真实身份是【${ownerName}】。
+你在酒馆里正在聊天的【高级角色卡】是【${card.name}】（设定：${card.description}；性格：${card.personality}）。
+你在酒馆里扮演的【User Persona 马甲】是【${uPersona.name}】。
+
+【高级角色卡【${card.name}】刚刚发来的最新消息】：
+“${userTakeoverInput}”
+
+请以【${ownerName}】本人的真实第一人称性格，写出你在手机屏幕前看到这句最新台词时的【真实内心第一反应与心动/破防/抓狂OS】（15字以内，不要多余解释，直接输出文字）`;
+
+          const res = await api.ai.generate({
+            characterId: currentOwner.id,
+            appTags: ["silly_tavern", "takeover_reaction"],
+            instruction: prompt
+          });
+
+          const readOs = res.text?.trim()?.replace(/["“”]/g, '') || "心跳漏了一拍...怎么回得这么戳我！";
+
+          // 仅记录并显示用户写的这句角色卡台词，附带 TA 看到后的内心反应
+          card.messages.push({
+            role: 'char',
+            content: userTakeoverInput,
+            readOs: readOs,
+            isTakeover: true,
+            time: "刚刚"
+          });
+
+          renderChatStream();
+          await saveTavernData();
+          if (api) api.ui.toast("✨ 已以角色卡身份回复TA！TA 正在屏幕前脸红反应！");
+        }
+      } catch (e) {
+        console.warn("Takeover err", e);
+        card.messages.push({
+          role: 'char',
+          content: userTakeoverInput,
+          readOs: "心跳加速...完全被拿捏了！",
+          isTakeover: true,
+          time: "刚刚"
+        });
+        renderChatStream();
+        await saveTavernData();
+      } finally {
+        isGenerating = false;
+        if (btn) btn.innerHTML = `<span>💬 推进下一句</span>`;
+      }
+      return;
+    }
+
+    // ==========================================
+    // 情况二：常规吃瓜窥屏推进（TA 打字 ➡️ NPC 答复）
+    // ==========================================
+    let typingIndicator = null;
+    try {
+      typingIndicator = document.createElement("div");
+      typingIndicator.className = "typing-indicator-box typing-user";
+      typingIndicator.innerHTML = `⌨️ ${ownerName} (以 ${uPersona.name} 身份) 正在酒馆输入框打字...`;
+      streamContainer.appendChild(typingIndicator);
+      const scrollEl = document.getElementById("chat-session-view");
+      if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+
+      if (api && api.ai) {
+        const prompt = `【核心场景：你在私下玩 SillyTavern 高级卡角色扮演，真实还原玩家与AI互动】
+【防OOC绝对要求】：你的真实身份是【${ownerName}】（100%保持你本人的原生真实性格、口吻与微心理反应）。
+你在酒馆里正在聊天的【高级角色卡（对方NPC）】是【${card.name}】（设定：${card.description}；性格：${card.personality}；世界观：${card.scenario}）。
+你在酒馆里扮演的【User Persona 马甲（你本人在剧本里的角色）】是【${uPersona.name}】（马甲设定：${uPersona.desc}）。
+
+【当前酒馆对戏记录】：
+${recentMsgs.map(m => (m.role === 'char' ? `[${card.name}]: ${m.content}` : `[${uPersona.name}(${ownerName})]: ${m.content}`)).join('\n')}
+
+【对戏与心理要求】：
+1. 拒绝千篇一律的套路废话，深入捕捉【${ownerName}】与【${card.name}】在当下的心理博弈与微表情。
+2. 【打字心声 (userSendOs)】：写出【${ownerName}】在现实中偷偷打字时的真实微心理（如：纠结删改、暗暗期待、表面硬气实际紧张、想试探对方底线等）。
+3. 【NPC回复 (charResponse)】：【${card.name}】的回应必须紧扣其人设弱点与核心张力，有实质性的推拉、身体微动作或眼神变化。
+4. 【看到回复后的反应 (ownerReadOs)】：写出【${ownerName}】亲眼在手机屏幕看到这句回复时最真实的第一生理/情绪反应（如：心跳漏一拍、抱枕捂脸、被反将一军的抓狂、嘴角疯狂上扬却死不承认等，鲜活接地气，拒绝机械重复）。
+
+请严格输出合法的 JSON 格式：
+{
+  "userReply": "你作为【${ownerName}】代入马甲【${uPersona.name}】发出的动作描写与台词",
+  "userSendOs": "你打字时的真实内心戏（15字内）",
+  "charResponse": "酒馆高级卡【${card.name}】做出的最新高质感回复（含 *动作神态描写*）",
+  "ownerReadOs": "你亲眼看到对方这句回复后的真实心跳/抓狂/暗爽反应（15字内）"
+}`;
+
+        const res = await api.ai.generate({
+          characterId: currentOwner.id,
+          appTags: ["silly_tavern", "chat_rp"],
+          instruction: prompt
+        });
+
+        if (typingIndicator) typingIndicator.remove();
+
+        let parsed = parseJsonFromText(res.text);
+        
+        // 增强容错：如果 JSON 没有完整解析出 charResponse，使用多层提取
+        if (!parsed || !parsed.charResponse) {
+          const raw = res.text || "";
+          const userMatch = raw.match(/"userReply"\s*:\s*"([\s\S]*?)(?<!\\)"/) || raw.match(/userReply[:：]\s*([^\n\r]+)/);
+          const charMatch = raw.match(/"charResponse"\s*:\s*"([\s\S]*?)(?<!\\)"/) || raw.match(/charResponse[:：]\s*([^\n\r]+)/);
+          const readOsMatch = raw.match(/"ownerReadOs"\s*:\s*"([\s\S]*?)(?<!\\)"/) || raw.match(/ownerReadOs[:：]\s*([^\n\r]+)/);
+          const sendOsMatch = raw.match(/"userSendOs"\s*:\s*"([\s\S]*?)(?<!\\)"/) || raw.match(/userSendOs[:：]\s*([^\n\r]+)/);
+
+          parsed = {
+            userReply: userMatch ? userMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : (parsed?.userReply || `*抬眼看向你* 接下来要怎么做？`),
+            userSendOs: sendOsMatch ? sendOsMatch[1].replace(/\\"/g, '"') : (parsed?.userSendOs || `看你怎么接！`),
+            charResponse: charMatch ? charMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : (parsed?.charResponse || `*眼神微动，唇角勾起一抹若有若无的弧度* 怎么，你觉得我会轻易放过你么？`),
+            ownerReadOs: readOsMatch ? readOsMatch[1].replace(/\\"/g, '"') : (parsed?.ownerReadOs || `心跳漏了一拍...怎么回得这么戳我！`)
+          };
+        }
+
+        // 步骤一：TA 先打字发送消息，并展示打字时的心声
+        if (parsed.userReply && !userTakeoverInput) {
+          card.messages.push({
+            role: 'user',
+            content: parsed.userReply,
+            sendOs: parsed.userSendOs || "看我怎么接这句！",
+            time: "刚刚"
+          });
+          renderChatStream();
+          await new Promise(r => setTimeout(r, 400));
+        }
+
+        // 步骤二：高级卡做出最新回复（处于对话流末尾最新处！），附带 TA 看到屏幕回复后的真实反应
+        if (parsed.charResponse) {
+          card.messages.push({
+            role: 'char',
+            content: parsed.charResponse,
+            readOs: parsed.ownerReadOs || "呜哇...这句回复也太戳我了吧！",
+            isTakeover: !!userTakeoverInput,
+            time: "刚刚"
+          });
+          renderChatStream();
+        }
+
+        if (api && api.memory) {
+          const memoryText = `${ownerName}在SillyTavern扮演【${uPersona.name}】给【${card.name}】打字，看到对方最新回复后真实反应：“${parsed.ownerReadOs || '心跳加速'}”`;
+          api.memory.addTimeline({
+            characterId: currentOwner.id,
+            appLabel: "TA的SillyTavern",
+            detail: "silly_tavern_turn",
+            summary: memoryText,
+            data: { cardName: card.name }
+          }).catch(e => console.warn(e));
+        }
+
+        await saveTavernData();
+      }
+    } catch (e) {
+      console.warn("Tavern turn err", e);
+      if (typingIndicator) typingIndicator.remove();
+
+      if (api) api.ui.toast("⚠️ 大模型生成超时或报错，请重试");
+    } finally {
+      isGenerating = false;
+      if (btn) btn.innerHTML = `<span>💬 推进下一句</span>`;
+    }
+  }
+
+  // 接管回复
+  async function sendTakeoverMessage() {
+    const input = document.getElementById("takeover-input");
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    await triggerNextTurn(text);
+  }
+
+  function openCardDrawer() {
+    const card = getActiveCard();
+    const details = document.getElementById("drawer-card-details");
+    const listEl = document.getElementById("drawer-cards-list");
+    
+    if (card) {
+      const uP = card.userPersona || { name: '默认马甲', desc: '' };
+      details.innerHTML = `
+        <div style="font-size:15px; font-weight:700; color:#f472b6; margin-bottom:6px;">${card.icon} ${card.name}</div>
+        <div class="st-persona-badge">👤 TA扮演的马甲: ${uP.name}</div>
+        <div style="font-size:11px; color:#fbcfe8; margin-bottom:6px; line-height:1.4;"><span style="color:#f472b6; font-weight:bold;">User Persona:</span> ${uP.desc || '专属对戏马甲'}</div>
+        <div style="font-size:11px; color:#cbd5e1; margin-bottom:4px; line-height:1.4;"><span style="color:#a78bfa; font-weight:bold;">Desc(W++):</span> ${card.description}</div>
+        <div style="font-size:11px; color:#cbd5e1; margin-bottom:4px; line-height:1.4;"><span style="color:#a78bfa; font-weight:bold;">Persona:</span> ${card.personality}</div>
+        <div style="font-size:11px; color:#cbd5e1; margin-bottom:6px; line-height:1.4;"><span style="color:#a78bfa; font-weight:bold;">Scenario:</span> ${card.scenario}</div>
+        <div style="font-size:10px; color:#f59e0b;">🏷️ ${(card.tags || []).join(" · ")}</div>
+      `;
+    } else {
+      details.innerHTML = `<div style="font-size:12px; color:var(--text-sub);">暂无卡片详情</div>`;
+    }
+
+    listEl.innerHTML = "";
+    (tavernData.cards || []).forEach(c => {
+      const isCur = c.id === tavernData.activeCardId;
+      const item = document.createElement("div");
+      item.style.cssText = `display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:${isCur?'rgba(236,72,153,0.2)':'rgba(255,255,255,0.04)'}; border:1px solid ${isCur?'#ec4899':'rgba(255,255,255,0.08)'}; border-radius:8px; cursor:pointer;`;
+      item.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; overflow:hidden;">
+          <span>${c.icon || '🎴'}</span>
+          <span style="font-size:12px; color:#fff; font-weight:${isCur?'700':'normal'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.name}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          ${isCur ? '<span style="font-size:10px; color:#f472b6;">当前对戏</span>' : ''}
+          <button style="background:transparent; border:none; color:#f87171; font-size:11px; cursor:pointer;" onclick="deleteCard(event, '${c.id}')">🗑️</button>
+        </div>
+      `;
+      item.onclick = () => {
+        switchCard(c.id);
+      };
+      listEl.appendChild(item);
+    });
+
+    document.getElementById("drawer-modal").style.display = "flex";
+  }
+
+  async function switchCard(cardId) {
+    if (tavernData.activeCardId === cardId) {
+      closeModal("drawer-modal");
+      return;
+    }
+    tavernData.activeCardId = cardId;
+    await saveTavernData();
+    renderCardBanner();
+    renderChatStream();
+    closeModal("drawer-modal");
+    const c = getActiveCard();
+    if (api) api.ui.toast(`🔄 已载入历史卡【${c?.name || '卡片'}】进度！继续对戏！`);
+  }
+
+  async function deleteCard(e, cardId) {
+    e.stopPropagation();
+    tavernData.cards = tavernData.cards.filter(c => c.id !== cardId);
+    if (tavernData.cards.length === 0) {
+      tavernData.activeCardId = null;
+      await saveTavernData();
+      closeModal("drawer-modal");
+      loadTavernData();
+      return;
+    }
+    if (tavernData.activeCardId === cardId) {
+      tavernData.activeCardId = tavernData.cards[0].id;
+    }
+    await saveTavernData();
+    renderCardBanner();
+    renderChatStream();
+    openCardDrawer();
+  }
+
+  // 处刑抓包
+  async function shareToRealChat() {
+    const ownerName = currentOwner.name || "TA";
+    const userName = userProfile?.name || "你";
+    const card = getActiveCard();
+    if (!card) return;
+
+    const uPersona = card.userPersona || { name: `${ownerName}的马甲` };
+    const lastUserMsg = [...(card.messages || [])].reverse().find(m => m.role === 'user');
+    const secretText = lastUserMsg ? lastUserMsg.content : "在酒馆里打字";
+    const secretOs = lastUserMsg ? lastUserMsg.innerOs : "千万别被发现...";
+
+    showDialog({
+      title: "📸 抓包发到真实聊天室？",
+      msg: `是否将【${ownerName}】在 SillyTavern 扮演【${uPersona.name}】与高级卡【${card.name}】飙戏的羞耻记录直接发到聊天室公开处刑？\n\nTA 收到后会当场炸毛并拼命狡辩！`,
+      onConfirm: async () => {
+        closeModal("st-dialog-modal");
+        try {
+          if (api && api.chat) {
+            await api.chat.sendCard({
+              characterId: currentOwner.id,
+              role: "user",
+              summary: `${userName}在SillyTavern抓包了${ownerName}扮演【${uPersona.name}】与高级卡【${card.name}】对戏：“${secretText}”（真实内心：${secretOs}）`,
+              historyText: `[抓包处刑：${userName}偷偷抓包了${ownerName}在玩SillyTavern，不仅自捏了高阶卡【${card.name}】（设定：${card.description}），还给自己捏了马甲【${uPersona.name}】进行深度飙戏，甚至看到了TA在酒馆里打的字：“${secretText}”以及屏幕外真实心声：“${secretOs}”。请根据你真实人设（害羞、炸毛、拼命狡辩、傲娇掩饰）在聊天室做出强烈反应！]`,
+              historyRole: "user",
+              card: {
+                appLabel: "TA的SillyTavern",
+                title: `🎴 抓包了TA在酒馆自捏马甲飙戏`,
+                subtitle: `${uPersona.name} × ${card.name}`,
+                body: `“${secretText}”\n💭 屏幕外真实内心：“${secretOs}”`,
+                status: "酒馆抓包",
+                accentColor: "#ec4899",
+                sections: [
+                  {
+                    title: "自捏酒馆档案",
+                    rows: [
+                      { label: "TA扮演的马甲", value: uPersona.name },
+                      { label: "对戏高级卡", value: card.name }
+                    ]
+                  }
+                ],
+                actions: [{ label: "去酒馆围观" }]
+              }
+            });
+
+            await api.chat.requestReply({ characterId: currentOwner.id });
+            if (api) api.ui.toast("✅ 已发送到处刑聊天室！TA 正在准备回应...");
+          }
+        } catch (e) {
+          console.warn("Share err", e);
+        }
+      }
+    });
+  }
+
+  function openOwnerPicker() {
+    const list = document.getElementById("owner-select-list");
+    list.innerHTML = "";
+    
+    if (!allCharacters || allCharacters.length === 0) {
+      list.innerHTML = `<div style="font-size:12px; color:var(--text-sub); text-align:center; padding:10px;">暂无更多角色</div>`;
+      document.getElementById("owner-modal").style.display = "flex";
+      return;
+    }
+
+    allCharacters.forEach(c => {
+      const isCur = c.id === currentOwner?.id;
+      const item = document.createElement("div");
+      item.style.cssText = `display:flex; align-items:center; gap:8px; padding:8px 10px; background:${isCur?'rgba(236,72,153,0.2)':'rgba(255,255,255,0.05)'}; border:1px solid ${isCur?'#ec4899':'transparent'}; border-radius:8px; cursor:pointer;`;
+      item.innerHTML = `
+        <div style="width:28px; height:28px; border-radius:50%; background:#334155; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+          ${c.avatar ? `<img src="${c.avatar}" style="width:100%;height:100%;object-fit:cover;">` : '👤'}
+        </div>
+        <div style="flex:1; font-size:13px; font-weight:600; color:#fff;">${c.name}</div>
+        ${isCur ? '<span style="color:#ec4899; font-size:12px;">✓</span>' : ''}
+      `;
+      item.onclick = async () => {
+        closeModal("owner-modal");
+        if (c.id !== currentOwner?.id) {
+          currentOwner = c;
+          renderHeader();
+          await loadTavernData();
+          if (api) api.ui.toast(`🔄 已切换至 ${c.name} 的酒馆！`);
+        }
+      };
+      list.appendChild(item);
+    });
+    document.getElementById("owner-modal").style.display = "flex";
+  }
+
+  function parseJsonFromText(text) {
+    if (!text) return null;
+    try {
+      // 清除 markdown 代码块标记
+      let clean = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const match = clean.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          return JSON.parse(match[0]);
+        } catch (err) {
+          // 修复常见 JSON 内部未转义换行或尾随逗号
+          let sanitized = match[0]
+            .replace(/,\s*([\}\]])/g, '$1')
+            .replace(/[\r\n\t]/g, ' ');
+          return JSON.parse(sanitized);
+        }
+      }
+      return JSON.parse(clean);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function showDialog({ title, msg, onConfirm }) {
+    document.getElementById("st-dialog-title").textContent = title || "提示";
+    document.getElementById("st-dialog-msg").textContent = msg || "";
+    document.getElementById("st-dialog-confirm").onclick = onConfirm;
+    document.getElementById("st-dialog-modal").style.display = "flex";
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).style.display = "none";
+  }
+
+  window.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
